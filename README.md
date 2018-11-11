@@ -34,18 +34,14 @@ TODO: Clojars
 
 ### Basic Tiling
 ![Tiles](./doc/examples/pipes-tiled_3_3.svg)
-<img src="./doc/examples/pipes-tiled_3_3.svg">
 
 ### Tiling with Rotation
 
 ![Random rotation](./doc/examples/pipes-rotated_20_20.svg)
-<img src="./doc/examples/pipes-rotated_20_20.svg">
 
 ![Random rotation with a more complicated SVG](./doc/examples/bnn-logo-rotated_11_7.svg)
-<img src="./doc/examples/bnn-logo-rotated_11_7.svg">
 
 ![Rotate based on the elements of pi](./doc/examples/pipes-rotated-pi_8_8.svg)
-<img src="./doc/examples/pipes-rotated-pi_8_8.svg">
 
 ## License
 Distributed under the Eclipse Public License either version 1.0 or (at
