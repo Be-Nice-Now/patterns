@@ -13,7 +13,7 @@
 
 (comment
   (render
-    "./pipes-tiled_3_3.svg"
+    "./doc/examples/pipes-tiled_3_3.svg"
     (-> "pipes.svg"
         clojure.java.io/resource
         slurp
@@ -21,7 +21,7 @@
         (tile/grid 3 3)))
 
   (render
-    "./pipes-rotated_20_20.svg"
+    "./doc/examples/pipes-rotated_20_20.svg"
     (-> "pipes.svg"
         clojure.java.io/resource
         slurp
@@ -31,7 +31,7 @@
           {:transform-fn tile/rotate})))
 
   (render
-    "./bnn-logo-rotated_11_7.svg"
+    "./doc/examples/bnn-logo-rotated_11_7.svg"
     (-> "bnn-logo.svg"
         clojure.java.io/resource
         slurp
@@ -47,7 +47,7 @@
                           #"\." ""))))
 
   (render
-    "./pipes-rotated-pi_8_8.svg"
+    "./doc/examples/pipes-rotated-pi_8_8.svg"
     (-> "pipes.svg"
         clojure.java.io/resource
         slurp
