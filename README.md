@@ -1,36 +1,52 @@
 # patterns
 
-FIXME: description
+`patterns` is a pattern generating toolkit built in Clojure. At _Be Nice Now_, we use this to generate the patterns we use for our prints and textiles.
 
 ## Installation
 
-Download from http://example.com/FIXME.
+TODO: Clojars
 
 ## Usage
 
-FIXME: explanation
+### Tiling
 
-    $ java -jar patterns-0.1.0-standalone.jar [args]
+```clj
+(core/render
+  "./pipes-tiled_3_3.svg"
+  (-> "pipes.svg"
+      clojure.java.io/resource
+      slurp
+      hiccup/svg->hiccup
+      (tile/grid 3 3)))
 
-## Options
-
-FIXME: listing of options this app accepts.
+(core/render
+  "./bnn-logo-rotated_11_7.svg"
+  (-> "bnn-logo.svg"
+      clojure.java.io/resource
+      slurp
+      hiccup/svg->hiccup
+      (tile/grid
+        11 7
+        {:transform-fn tile/rotate})))
+```
 
 ## Examples
 
-...
+### Basic Tiling
+![Tiles](./doc/examples/pipes-tiled_3_3.svg)
+<img src="./doc/examples/pipes-tiled_3_3.svg">
 
-### Bugs
+### Tiling with Rotation
 
-...
+![Random rotation](./doc/examples/pipes-rotated_20_20.svg)
+<img src="./doc/examples/pipes-rotated_20_20.svg">
 
-### Any Other Sections
-### That You Think
-### Might be Useful
+![Random rotation with a more complicated SVG](./doc/examples/bnn-logo-rotated_11_7.svg)
+<img src="./doc/examples/bnn-logo-rotated_11_7.svg">
+
+![Rotate based on the elements of pi](./doc/examples/pipes-rotated-pi_8_8.svg)
+<img src="./doc/examples/pipes-rotated-pi_8_8.svg">
 
 ## License
-
-Copyright © 2018 FIXME
-
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
