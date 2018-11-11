@@ -1,0 +1,11 @@
+version: '3'
+services:
+  app:
+    image: clojure:alpine
+    working_dir: /code
+    command: lein repl :headless :host 0.0.0.0 :port 3141
+    ports:
+      - '3141:3141'
+    volumes:
+      - .:/code
+      - ~/.m2:/root/.m2

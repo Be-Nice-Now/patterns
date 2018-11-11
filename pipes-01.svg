@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 700 700">
+  <defs>
+    <style>
+      #tile-0_0{clip-path:url(#clip-path--tile-0_0);}
+      .cls-3{fill:#09ff21;stroke:#f0f;stroke-miterlimit:10;stroke-width:50px;}
+    </style>
+    <clipPath id="clip-path--tile-0_0">
+      <rect class="cls-1" width="700" height="700"/>
+    </clipPath>
+  </defs>
+  <title>pipes</title>
+  <g id="tile-0_0" class="cls-2">
+    <rect class="cls-3" x="-56.02" y="199.92" width="869.21" height="300.08"/>
+    <rect class="cls-3" x="-84.6" y="199.92" width="869.21" height="300.08" transform="translate(699.96 -0.04) rotate(90)"/>
+    <path class="cls-3" d="M700.12,500a497.08,497.08,0,0,1-194.71-39.36A498.27,498.27,0,0,1,346.48,353.52,498.27,498.27,0,0,1,239.36,194.59,497.08,497.08,0,0,1,200-.12V-75H499.87L500-.12C500,110.23,589.77,200,700.12,200l113.07.22V500Z"/>
+  </g>
+</svg>
