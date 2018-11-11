@@ -20,9 +20,9 @@
 
 (defn ->defs
   [src id]
-  (let [[_svg-tag attrs & contents] src
+  (let [[tag attrs & contents] src
         {:keys [width height]} (dimensions src)]
-    (utils/veccat [:svg
+    (utils/veccat [tag
                    (-> attrs
                        (dissoc :viewBox)
                        (assoc :id id
@@ -34,7 +34,7 @@
   "Define an SVG use element"
   [id x y]
   [:use
-   {:xlink:href (str "#" id)
+   {:href (str "#" id)
     :x x
     :y y}])
 
