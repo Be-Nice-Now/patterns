@@ -35,6 +35,8 @@ TODO: Clojars
 ### Basic Tiling
 ![Tiles](./doc/examples/pipes-tiled_3_3.svg)
 
+![Alternating](./doc/examples/tiled-alternating_10_3.svg)
+
 ### Tiling with Rotation
 
 ![Random rotation](./doc/examples/pipes-rotated_20_20.svg)
