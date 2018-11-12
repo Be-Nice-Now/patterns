@@ -58,6 +58,15 @@
   [:use
    (assoc attrs :xlink:href (str "#" id))])
 
+(defn line
+  [{[x1 y1] :start
+    [x2 y2] :end}]
+  [:line
+   {:x1 x1
+    :y1 y1
+    :x2 x2
+    :y2 y2}])
+
 (defn to-svg-doc
   "Prep a Hiccup SVG to be a fully formatted SVG document."
   [[svg-tag attrs & contents]]
