@@ -10,7 +10,8 @@
 (defn pick-alternate
   "Returns :pick-fn for `grid` which alternates through the srcs."
   [srcs [x y]]
-  (mod (+ x y)
+  (mod (+ x
+          (* y (count srcs)))
        (count srcs)))
 
 (defn transform-rotate
@@ -63,7 +64,15 @@
                          pick-fn]
                   :or {transform-fn transform-constant
                        pick-fn pick-alternate}}]]
-  (let [dimensions (map svg/dimensions srcs)
+  (let [picks (for [x (range 0 xn)
+                    y (range 0 yn)]
+                [[x y] (pick-fn srcs [x y])])
+        defs (->> picks
+                  (map second)
+                  (into #{})
+                  (map (fn [i]
+                         (svg/->def (nth srcs i) (str "base-tile--" i)))))
+        dimensions (map svg/dimensions defs)
         width (apply min (map :width dimensions))
         height (apply min (map :height dimensions))]
     (utils/veccat [:svg
@@ -71,17 +80,15 @@
                                      (* xn width)
                                      (* yn height))}
                    (utils/veccat
-                     [:defs]
-                     (for [i (range (count srcs))]
-                       (svg/->def (get srcs i) (str "base-tile--" i))))]
-                  (for [x (range 0 xn)
-                        y (range 0 yn)]
-                    (let [picked-n (pick-fn srcs [x y])]
-                      (transform-fn
-                        (get srcs picked-n)
-                        [x y]
-                        (svg/use (str "base-tile--" picked-n)
-                                 {:x (* x width)
-                                  :y (* y height)
-                                  :width width
-                                  :height height})))))))
+                     [:defs {}]
+                     defs)]
+                  (map (fn [[[x y] src-idx]]
+                         (transform-fn
+                           (nth srcs src-idx)
+                           [x y]
+                           (svg/use (str "base-tile--" src-idx)
+                                    {:x (* x width)
+                                     :y (* y height)
+                                     :width width
+                                     :height height})))
+                       picks))))
