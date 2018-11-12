@@ -42,12 +42,13 @@
   [xn yn grid-size]
   (let [width (* (inc xn) grid-size)
         height (* (inc yn) grid-size)]
-    (for [line-set (line-sets (points xn yn width height))]
-      (utils/veccat
-        [:svg
-         {:width width
-          :height height}
-         [:defs {}
-          [:style {}
-           "line {stroke:rgb(255,0,0);stroke-width:2;}"]]]
-        line-set))))
+    (vec
+      (for [line-set (line-sets (points xn yn width height))]
+        (utils/veccat
+          [:svg
+           {:width width
+            :height height}
+           [:defs {}
+            [:style {}
+             "line {stroke:rgb(255,0,0);stroke-width:2;}"]]]
+          line-set)))))

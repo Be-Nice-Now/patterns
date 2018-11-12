@@ -1,6 +1,7 @@
 (ns patterns.core
   (:require [hiccup.core :as html]
             [patterns.hiccup :as hiccup]
+            [patterns.pipes :as pipes]
             [patterns.tile :as tile]
             [patterns.utils.svg :as svg]))
 
@@ -53,6 +54,13 @@
         (tile/grid
           11 7
           {:transform-fn tile/transform-rotate})))
+
+  (render
+    "./doc/tmp/straight.svg"
+    (tile/grid
+      (pipes/swatches
+        1 1 10)
+      5 5))
 
   (def pi-seq (vec (map #(Integer/valueOf (str %))
                         (clojure.string/replace
