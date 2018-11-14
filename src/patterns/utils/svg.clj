@@ -59,13 +59,24 @@
    (assoc attrs :xlink:href (str "#" id))])
 
 (defn line
-  [{[x1 y1] :start
-    [x2 y2] :end}]
+  [_dimensions {[x1 y1] :start
+                [x2 y2] :end}]
   [:line
    {:x1 x1
     :y1 y1
     :x2 x2
     :y2 y2}])
+
+(defn quadratic
+  [{:keys [width height]}
+   {[x1 y1] :start
+    [x2 y2] :end}]
+  [:path
+   {:d (format "M %s %s Q %s %s, %s %s"
+               x1 y1
+               (/ width 2)
+               (/ height 2)
+               x2 y2)}])
 
 (defn to-svg-doc
   "Prep a Hiccup SVG to be a fully formatted SVG document."

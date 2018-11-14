@@ -5,7 +5,7 @@
             [patterns.utils :as utils]))
 
 (defn points
-  [xn yn width height]
+  [xn yn {:keys [width height]}]
   (concat
     (combo/cartesian-product
       (map #(* % (/ width (inc xn)))
@@ -22,33 +22,35 @@
        (map #(remove #{%} items))
        (map point-pairs)
        (zipmap items)
-       (reduce (fn [accum [item applesauces]]
+       (reduce (fn [accum [item pairs]]
                  (concat accum
-                         (if (seq applesauces)
+                         (if (seq pairs)
                            (map (partial cons [head item])
-                                applesauces)
+                                pairs)
                            [[[head item]]])))
                [])
        vec))
 
-(defn line-sets
+(defn- line-sets
   [points]
   (for [pairs (point-pairs points)]
     (for [[start end] pairs]
-      (svg/line {:start start
-                 :end end}))))
+      {:start start
+       :end end})))
 
 (defn swatches
-  [xn yn grid-size]
-  (let [width (* (inc xn) grid-size)
-        height (* (inc yn) grid-size)]
+  [xn yn & [{:keys [grid-size line-fn style]
+             :or {line-fn svg/line
+                  style "line {fill:none;stroke:rgb(255,0,0);stroke-width:2;}"
+                  grid-size 10}}]]
+  (let [dimension {:width (* (inc xn) grid-size)
+                   :height (* (inc yn) grid-size)}]
     (vec
-      (for [line-set (line-sets (points xn yn width height))]
+      (for [line-set (line-sets (points xn yn dimension))]
         (utils/veccat
           [:svg
-           {:width width
-            :height height}
+           dimension
            [:defs {}
-            [:style {}
-             "line {stroke:rgb(255,0,0);stroke-width:2;}"]]]
-          line-set)))))
+            [:style {} style]]]
+          (map (partial line-fn dimension)
+               line-set))))))
