@@ -9,9 +9,9 @@
 
 (defn pick-alternate
   "Returns :pick-fn for `grid` which alternates through the srcs."
-  [srcs [x y]]
+  [{srcs :srcs yn :yn} [x y]]
   (mod (+ x
-          (* y (count srcs)))
+          (* y yn))
        (count srcs)))
 
 (defn transform-rotate
@@ -55,7 +55,7 @@
 
      Defaults to `transform-constant`
 
-   :pick-fn (fn [[src0 src1 ...] [x y]])
+   :pick-fn (fn [{:srcs [src0 src1 ...] :xn xn :yn yn} [x y]])
      Given a sequence of the input `src`s, and the [x y] coordinate of the location
      in the grid, returns a number indicating which element to choose.
 
@@ -66,12 +66,16 @@
                        pick-fn pick-alternate}}]]
   (let [picks (for [x (range 0 xn)
                     y (range 0 yn)]
-                [[x y] (pick-fn srcs [x y])])
+                [[x y] (pick-fn {:srcs srcs
+                                 :xn xn
+                                 :yn yn}
+                                [x y])])
+        tile-prefix (gensym "tile")
         defs (->> picks
                   (map second)
                   (into #{})
                   (map (fn [i]
-                         (svg/->def (nth srcs i) (str "base-tile--" i)))))
+                         (svg/->def (nth srcs i) (str tile-prefix i)))))
         dimensions (map svg/dimensions defs)
         width (apply min (map :width dimensions))
         height (apply min (map :height dimensions))]
@@ -86,7 +90,7 @@
                          (transform-fn
                            (nth srcs src-idx)
                            [x y]
-                           (svg/use (str "base-tile--" src-idx)
+                           (svg/use (str tile-prefix src-idx)
                                     {:x (* x width)
                                      :y (* y height)
                                      :width width
