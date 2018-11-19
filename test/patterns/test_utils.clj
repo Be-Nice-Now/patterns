@@ -1,28 +1,15 @@
 (ns patterns.test-utils
   (:require [patterns.hiccup :as hiccup]
             [patterns.core :as patterns])
-  (:import [org.xml.sax ErrorHandler
-                        InputSource]
-           [java.io StringReader]
-           [nu.validator.messages MessageEmitterAdapter]
-           [nu.validator.client EmbeddedValidator$OutputFormat]))
-
-(comment
-  nu.validator.client.SimpleCommandLineValidator)
-
-
-;; Generate SVGs using patterns, then turn them into strings using hiccup, then validate them with:
-;;; https://github.com/validator/validator/blob/fadbfed45f9439933e600e2d37029ad518c4265e/src/nu/validator/client/SimpleCommandLineValidator.java#L420-L427
-;;;  private static SimpleDocumentValidator validator;
-;;;
-
-;;; checksvgfile
-;;;; setschema
+  (:import [java.io StringReader]
+           [nu.validator.validation SimpleDocumentValidator]
+           [org.xml.sax ErrorHandler
+                        InputSource]))
 
 (defn validation-errors
   [svg-html-string]
   (let [validation-errors (atom [])
-        checker (doto (nu.validator.validation.SimpleDocumentValidator. false false false)
+        checker (doto (SimpleDocumentValidator. false false false)
                   (.setUpMainSchema "http://s.validator.nu/svg-xhtml5-rdf-mathml.rnc"
                                     (reify ErrorHandler))
                   (.setUpValidatorAndParsers (reify ErrorHandler
@@ -48,7 +35,7 @@
   [src]
   (-> src
       (patterns/render)
-      hiccup-validation-errors))
+      validation-errors))
 
 (defn resource->hiccup
   [n]
