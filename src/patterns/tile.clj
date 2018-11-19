@@ -1,5 +1,6 @@
 (ns patterns.tile
   (:require [patterns.utils :as utils]
+            [patterns.utils.sequences :as utils.seq]
             [patterns.utils.svg :as svg]))
 
 (defn transform-constant
@@ -43,6 +44,25 @@
                                (+ (/ width 2) x)
                                (+ (/ height 2) y))))]
        content))))
+
+(defn pi-rotate
+  "Simple `transform-fn` where every unique tile is assigned an n quarter rotation,
+   where n is the given digit of pi at the index of the tile.
+
+   ie, rotate the given tile by:
+   - 3 quarter turns
+   - 1 quarter turn
+   - 4 quarter turns
+   - ..."
+  [& args]
+  (apply transform-rotate
+         (fn [_src [x y] & _args]
+           (mod (* 90
+                   (get utils.seq/pi-seq
+                        (mod (+ x y)
+                             (count utils.seq/pi-seq))))
+                360))
+         args))
 
 (defn grid
   "Given a sequence of `srcs` Hiccup svgs, return a Hiccup svg where they are

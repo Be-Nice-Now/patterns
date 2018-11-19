@@ -10,4 +10,5 @@
                  [hiccup "1.0.5"]]
   :main ^:skip-aot patterns.core
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}
+             :dev {:dependencies [[nu.validator/validator "18.11.5"]]}})

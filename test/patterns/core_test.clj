@@ -1,7 +1,12 @@
 (ns patterns.core-test
   (:require [clojure.test :refer :all]
-            [patterns.core :refer :all]))
+            [patterns.hiccup :as hiccup]
+            [patterns.core :as patterns]))
 
-(deftest a-test
-  (testing "FIXME, I fail."
-    (is (= 0 1))))
+(deftest render--string-html
+  (testing "empty svg"
+    (let [empty-svg [:svg {}]]
+      (is (= empty-svg
+             (-> [:svg {}]
+                 patterns/render
+                 hiccup/svg->hiccup))))))

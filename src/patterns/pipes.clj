@@ -41,7 +41,7 @@
 (defn swatches
   [xn yn & [{:keys [grid-size line-fn style]
              :or {line-fn svg/line
-                  style "line {fill:none;stroke:rgb(255,0,0);stroke-width:2;}"
+                  style "path {fill:none;stroke:rgb(255,0,0);stroke-width:2;}"
                   grid-size 10}}]]
   (let [dimension {:width (* (inc xn) grid-size)
                    :height (* (inc yn) grid-size)}]

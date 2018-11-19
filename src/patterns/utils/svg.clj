@@ -61,11 +61,12 @@
 (defn line
   [_dimensions {[x1 y1] :start
                 [x2 y2] :end}]
-  [:line
-   {:x1 x1
-    :y1 y1
-    :x2 x2
-    :y2 y2}])
+  [:path
+   {:d (format "M %s %s L %s %s"
+               x1
+               y1
+               x2
+               y2)}])
 
 (defn quadratic
   [{:keys [width height]}
