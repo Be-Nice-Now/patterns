@@ -7,17 +7,19 @@
   "Return the topmost dimensions of `src` as {:height n :width n}"
   [src]
   (let [[_tag {:keys [width height] view-box :viewBox}] src]
-    (cond (and width height)
-          {:width width
-           :height height}
+    (->> (cond (and width height)
+               [width height]
 
-          view-box
-          (->> (str/split view-box #" ")
-               (drop 2)
-               (map #(Integer/valueOf ^String %))
-               (zipmap [:width :height]))
+               view-box
+               (->> (str/split view-box #" ")
+                    (drop 2))
 
-          :else {})))
+               :else [])
+         (map (fn [v]
+                (or (and (string? v)
+                         (Integer/valueOf ^String v))
+                    v)))
+         (zipmap [:width :height]))))
 
 (defn- namespace-style
   [id style-str]
@@ -78,6 +80,22 @@
                (/ width 2)
                (/ height 2)
                x2 y2)}])
+
+(defn multi-stroke
+  [strokes]
+  (let [ids (repeatedly (count strokes) (partial gensym "d"))]
+    {:style (str/join " "
+                      (map (fn [id {width :width
+                                    {:keys [r g b]} :colour}]
+                             (format "#%s path {fill:none;stroke:rgb(%s,%s,%s);stroke-width:%s}"
+                                     id (or r 0) (or g 0) (or b 0) width))
+                           ids
+                           strokes))
+     :path-fn (fn [path]
+                (utils/veccat [:g {}]
+                              (map (fn [id]
+                                     [:g {:id id} path])
+                                   (reverse ids))))}))
 
 (defn to-svg-doc
   "Prep a Hiccup SVG to be a fully formatted SVG document."

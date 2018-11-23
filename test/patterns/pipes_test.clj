@@ -1,11 +1,10 @@
 (ns patterns.pipes-test
   (:require [clojure.test :refer :all]
-            [patterns.core :as patterns]
             [patterns.pipes :as pipes]
+            [patterns.test-utils :as t.utils]
             [patterns.tile :as tile]
             [patterns.utils.paths :as utils.paths]
-            [patterns.utils.svg :as svg]
-            [patterns.test-utils :as t.utils]))
+            [patterns.utils.svg :as svg]))
 
 (deftest pipes-straight-lines
   (let [hiccup-svg (tile/grid
@@ -20,17 +19,15 @@
             empty?))))
 
 (deftest pipes-curves--pi
-  (let [hiccup-svg (tile/grid
+  (let [{:keys [style path-fn]} (svg/multi-stroke [{:width 1 :colour {:r 255}}
+                                                   {:width 14 :colour {:r 255 :g 255 :b 255}}
+                                                   {:width 15 :colour {:r 255}}])
+        hiccup-svg (tile/grid
                      [(nth (pipes/swatches
                              1 1
                              {:line-fn (fn [& args]
-                                         [:g {}
-                                          [:g {:id "backfill"}
-                                           (apply svg/quadratic args)]
-                                          [:g {:id "midfill"}
-                                           (apply svg/quadratic args)]
-                                          (apply svg/quadratic args)])
-                              :style "path {fill:none;stroke:rgb(255,0,0);stroke-width:1;} #midfill path {fill:none;stroke:rgb(255,255,255);stroke-width:14;} #backfill path {fill:none;stroke:rgb(255,0,0);stroke-width:15;}"})
+                                         (path-fn (apply svg/quadratic args)))
+                              :style style})
                            2)]
                      4 4
                      {:transform-fn tile/pi-rotate})]

@@ -6,9 +6,12 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/data.xml "0.2.0-alpha5"]
                  [org.clojure/math.combinatorics "0.1.4"]
-                 [dali "0.7.4"]
+                 [org.apache.xmlgraphics/batik-transcoder "1.10"]
+                 [org.apache.xmlgraphics/batik-codec "1.10"]
+                 [org.apache.xmlgraphics/batik-anim "1.10"]
                  [hiccup "1.0.5"]]
   :main ^:skip-aot patterns.core
   :target-path "target/%s"
+  :jvm-opts ["-Xmx1g"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[nu.validator/validator "18.11.5"]]}})

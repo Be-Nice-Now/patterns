@@ -3,26 +3,46 @@
             [clojure.string :as str]
             [patterns.utils :as utils]))
 
+(def xmlns
+  {:href :xlink:href})
+
 (defn- xml-tag->hiccup
   [kw]
-  ((comp keyword name) kw))
+  (let [k ((comp keyword name) kw)]
+    (or (k xmlns)
+        k)))
 
 (defn- string->hiccup
   [s]
-  (let [ret
-        (-> s
-            str/trim
-            str/trim-newline)]
-    (and (seq ret)
-         ret)))
+  (let [trimmed-string (-> s
+                           str/trim
+                           str/trim-newline)]
+    (and (seq trimmed-string)
+         (or (try
+               (Integer/valueOf ^String trimmed-string)
+               (catch Exception e
+                 false))
+             (try
+               (Float/valueOf ^String trimmed-string)
+               (catch Exception e
+                 false))
+             trimmed-string))))
 
-(defn style->hiccup
+(defn- style->hiccup
   [style-str]
   (map (fn [s]
          (let [parsed (string->hiccup s)]
            (when (seq parsed)
              (str parsed "}"))))
        (str/split style-str #"\}")))
+
+(defn- attrs->hiccup
+  [attrs]
+  (into {}
+        (map (fn [[k v]]
+               [(xml-tag->hiccup k)
+                (string->hiccup v)]))
+        attrs))
 
 (defn xml-element->hiccup
   "Given an XML Element, translate it to Hiccup."
@@ -37,8 +57,8 @@
                             :else nil))]
     (utils/veccat
       [parsed-tag
-       (or attrs
-           {})]
+       (attrs->hiccup (or attrs
+                          {}))]
       (->> content
            (mapcat content->hiccup)
            (filter identity)))))
@@ -51,3 +71,9 @@
   (->> s
        xml/parse-str
        xml-element->hiccup))
+
+(defn file->hiccup
+  [f]
+  (-> f
+      slurp
+      svg->hiccup))

@@ -40,9 +40,9 @@
         (assoc attrs
           :transform (when-not (zero? rotate-by)
                        (format "rotate(%s, %s, %s)"
-                               rotate-by
-                               (+ (/ width 2) x)
-                               (+ (/ height 2) y))))]
+                               (float rotate-by)
+                               (float (+ (/ width 2) x))
+                               (float (+ (/ height 2) y)))))]
        content))))
 
 (defn pi-rotate

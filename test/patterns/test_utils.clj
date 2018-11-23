@@ -1,6 +1,6 @@
 (ns patterns.test-utils
-  (:require [patterns.hiccup :as hiccup]
-            [patterns.core :as patterns])
+  (:require [patterns.core :as patterns]
+            [patterns.hiccup :as hiccup])
   (:import [java.io StringReader]
            [nu.validator.validation SimpleDocumentValidator]
            [org.xml.sax ErrorHandler
