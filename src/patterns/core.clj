@@ -95,9 +95,9 @@
            :id)
        true))
 
-(defn- tmp-resource
-  [id]
-  (str "/tmp/patterns.core." (UUID/randomUUID) id ".png"))
+(defn tmp-resource
+  []
+  (str "/tmp/patterns.core." (UUID/randomUUID)))
 
 (defn- recursive-render-png
   [filename src]
@@ -112,8 +112,7 @@
                                   def-body)
         def--non-svg-elements (remove is-id-svg-element?
                                       def-body)
-        tmp-filenames (map (comp tmp-resource :id second)
-                           def--svg-elements)
+        tmp-filenames (repeatedly (count def--svg-elements) tmp-resource)
         svg-image-elements (mapv (fn [filename [_svg-tag attrs]]
                                    [:svg attrs
                                     [:image (assoc (svg/dimensions [:src attrs])
@@ -122,9 +121,8 @@
                                  tmp-filenames
                                  def--svg-elements)]
     (try
-      (doseq [[tmp-filename tmp-src] (map list
-                                          tmp-filenames
-                                          def--svg-elements)]
+      (doseq [[tmp-filename tmp-src] (zipmap tmp-filenames
+                                             def--svg-elements)]
         (recursive-render-png tmp-filename tmp-src))
       (render-document-to-png
         filename
@@ -142,7 +140,9 @@
 (defn render
   "Given a `src` Hiccup SVG, return a string HTML representation.
    If provided a filename, place the rendered SVG representation there.
-   If provided an extension [:svg :png] render the Hiccup SVG as the given extension."
+   If provided an extension [:svg :png] render the Hiccup SVG as the given extension.
+
+   Returns the filename with extension."
   ([src]
    (src->string src))
   ([filename src]
@@ -152,4 +152,5 @@
      (case extension
        :svg (spit filename-w-extension (render src))
        :png (recursive-render-png filename-w-extension
-                                  src)))))
+                                  src))
+     filename-w-extension)))
