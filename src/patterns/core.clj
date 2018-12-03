@@ -1,17 +1,17 @@
 (ns patterns.core
-  (:require [hiccup.core :as html]
-            [patterns.utils.svg :as svg]
-            [clojure.java.io :as io]
-            [patterns.utils :as utils])
+  (:require [clojure.java.io :as io]
+            [hiccup.core :as html]
+            [patterns.utils :as utils]
+            [patterns.utils.svg :as svg])
   (:import [java.awt RenderingHints]
+           [java.io ByteArrayInputStream]
            [java.nio.charset StandardCharsets]
+           [java.util UUID]
            [org.apache.batik.anim.dom SAXSVGDocumentFactory]
            [org.apache.batik.transcoder SVGAbstractTranscoder
                                         TranscoderInput
                                         TranscoderOutput TranscoderException]
-           [org.apache.batik.transcoder.image PNGTranscoder]
-           [java.io ByteArrayInputStream]
-           [java.util UUID]))
+           [org.apache.batik.transcoder.image PNGTranscoder]))
 
 (defn- src->string
   [src]
