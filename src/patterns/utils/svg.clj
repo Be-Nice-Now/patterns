@@ -1,7 +1,16 @@
 (ns patterns.utils.svg
   (:refer-clojure :exclude [use])
   (:require [clojure.string :as str]
-            [patterns.utils :as utils]))
+            [patterns.utils :as utils]
+            [inkspot.color :as ink.color]))
+
+(extend-type clojure.lang.PersistentArrayMap
+  ink.color/IColor
+  (red    [{:keys [r]}] r)
+  (green  [{:keys [g]}] g)
+  (blue   [{:keys [b]}] b)
+  (alpha  [{:keys [a]}] (or a 1.0))
+  (coerce [m] (ink.color/to-color m)))
 
 (defn dimensions
   "Return the topmost dimensions of `src` as {:height n :width n}"

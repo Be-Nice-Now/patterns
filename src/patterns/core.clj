@@ -115,7 +115,7 @@
         tmp-filenames (repeatedly (count def--svg-elements) tmp-resource)
         svg-image-elements (mapv (fn [filename [_svg-tag attrs]]
                                    [:svg attrs
-                                    [:image (assoc (svg/dimensions [:src attrs])
+                                    [:image (assoc (svg/dimensions [:svg attrs])
                                               :xlink:href filename
                                               :x 0 :y 0)]])
                                  tmp-filenames

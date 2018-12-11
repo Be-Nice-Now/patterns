@@ -17,7 +17,7 @@
                  [rm-hull/inkspot "0.2.1"]]
   :main ^:skip-aot patterns.core
   :target-path "target/%s"
-  :jvm-opts ["-Xmx1g"]
+  :jvm-opts ["-Xmx2g"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[nu.validator/validator "18.11.5"
                                    :exclusions [xml-apis]]

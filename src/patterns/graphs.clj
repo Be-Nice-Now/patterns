@@ -19,20 +19,52 @@
 
 (set! *warn-on-reflection* true)
 
+(defn k-means-pixels-mapping
+  "Returns {color: k-color, ...} map"
+  [k pixels]
+  (println "k-means-pixels-mapping ::: start")
+  (let [pixels (->> pixels
+                    (remove (fn [argb]
+                              (zero? (:a argb))))
+                    (map (fn [{:keys [a r g b]}]
+                           [a r g b])))]
+    (println "k-means-pixels-mapping ::: clustering")
+    (->> (k-means/centroids clust.euc-dist/distance
+                            clust.average/average
+                            pixels
+                            (k-means/init-means k pixels)
+                            1.0)
+         (k-means/classify clust.euc-dist/distance pixels)
+         (into {}
+               (mapcat (fn [[[k-a k-r k-g k-b] v]]
+                         (map (fn [[v-a v-r v-g v-b]]
+                                [{:a v-a
+                                  :r v-r
+                                  :g v-g
+                                  :b v-b}
+                                 {:a (float (/ (Math/round ^Float (* k-a 100))
+                                               100))
+                                  :r (int k-r)
+                                  :g (int k-g)
+                                  :b (int k-b)}])
+                              v)))))))
+
 (defn k-means-pixels-data
   [k pixels]
+  (println "k-means-pixels-data ::: start")
   (let [pixels (->> pixels
                     (remove (fn [argb]
                               (zero? (:a argb))))
                     (map (fn [{:keys [a r g b]}]
                            [a r g b])))
         pixel-count (count pixels)
+        _ (println "k-means-pixels-data ::: clustering")
         groups (->>
                  (k-means/centroids clust.euc-dist/distance
                                     clust.average/average
                                     pixels
                                     (k-means/init-means k pixels)
-                                    0)
+                                    1.0)
                  (k-means/classify clust.euc-dist/distance pixels)
                  (map (fn [[[a r g b] v]]
                         [{:a (float (/ (Math/round ^Float (* a 100))
@@ -40,6 +72,7 @@
                           :r (int r)
                           :g (int g)
                           :b (int b)} (count v)])))]
+    (println "k-means-pixels-data ::: returning")
     (into {}
           (map (fn [[k v]]
                  [k (float (/ v pixel-count))]))
@@ -87,7 +120,7 @@
   {{:a [0-1]
     :r [0-255]
     :g [0-255]
-    :b [0-255]}: (0-100]}"
+    :b [0-255]}: (0-1]}"
   [src]
   (let [tmp-resource-name (patterns/render
                             (patterns/tmp-resource)

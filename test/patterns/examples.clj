@@ -5,6 +5,7 @@
             [patterns.graphs :as graphs]
             [patterns.pipes :as pipes]
             [patterns.tile :as tile]
+            [patterns.transform :as transform]
             [patterns.utils.paths :as utils.paths]
             [patterns.utils.svg :as svg]
             [inkspot.color :as ink.color]
@@ -44,17 +45,26 @@
        (take 7
              (time/iterate time/plus (time/local-date year month day) (time/days 1)))))
 
-(indexed-days-of-week [2018 12 3])
-
-(take 7 (time/iterate time/plus (time/local-date 2018 12 3) (time/days 1)))
+(defn render
+  [[month day] src description]
+  (let [filename (format "./doc/2018-%s-%s"
+                         month
+                         day)]
+    (try
+      (println description)
+      (patterns/render
+        filename
+        src
+        :png)
+      (spit (str filename ".txt") description)
+      (catch Error e
+        (println e)
+        (throw (ex-info "Error" {} e))))))
 
 (defn instagram-2018-47
   []
   (let [gen-fn (fn [month idx_1_based day]
-                 (let [filename (format "./doc/2018-%s-%s"
-                                        month
-                                        day)
-                       pipe-endpoints (inc (rand-int 3))
+                 (let [pipe-endpoints (inc (rand-int 3))
                        line-fn (if (= 1 pipe-endpoints)
                                  svg/quadratic
                                  (partial utils.paths/single-bend-line-fn (* idx_1_based idx_1_based)))
@@ -97,16 +107,9 @@
                                        :grid-size grid-size})
                                     day day
                                     {:transform-fn tile/transform-rotate})]
-                   (try
-                     (println description)
-                     (patterns/render
-                       filename
-                       hiccup-svg
-                       :png)
-                     (spit (str filename ".txt") description)
-                     (catch Error e
-                       (println e)
-                       (throw (ex-info "Error" {} e))))))]
+                   (render [month day]
+                           hiccup-svg
+                           description)))]
     (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 47))]
       (gen-fn 11 idx_1_based day))))
 
@@ -135,10 +138,7 @@
                             (println "::: noise generated")
                             noise-swatch))
         gen-fn (fn [month idx_1_based day]
-                 (let [filename (format "./doc/2018-%s-%s"
-                                        month
-                                        day)
-                       height-width (-> (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                 (let [height-width (-> (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                            idx_1_based)
                                         (Math/ceil)
                                         int)
@@ -181,22 +181,88 @@
                                                :width height-width}))
                                        {:opacity 1.0})]
                                     idx_1_based idx_1_based)]
-                   (try
-                     (println description)
-                     (patterns/render
-                       filename
-                       hiccup-svg
-                       :png)
-                     (spit (str filename ".txt") description)
-                     (catch Error e
-                       (println e)
-                       (throw (ex-info "Error" {} e))))
+                   (render [month day]
+                           hiccup-svg
+                           description)
                    (println ":: deleting ::: " noise-swatch)
                    (io/delete-file noise-swatch)))]
 
     (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 48))]
       (gen-fn 12 idx_1_based day))))
 
+(defn instagram-2018-49
+  []
+  (let [png-swatches (->> "./swatches/png/nature"
+                          io/resource
+                          io/file
+                          file-seq
+                          rest)
+        tile-width-height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 2)
+        path->svg (fn [path {:keys [height width]}]
+                    [:svg {:height tile-width-height :width tile-width-height}
+                     [:defs {}]
+                     [:image {:xlink:href path
+                              :height height
+                              :width width
+                              :x 0 :y 0}]])
+        svg-swatches (into []
+                           (comp (map (juxt str img/load-image))
+                                 (map (fn [[path image]]
+                                        (path->svg path
+                                                   {:height (img/height image)
+                                                    :width (img/width image)}))))
+                           png-swatches)
+        gen-fn (fn [month idx_1_based day svg-swatch]
+                 (let [_ (println "::: histing")
+                       hist-path (transform/shuffle svg-swatch)
+                       _ (println "::: clustering")
+                       k-means-swatch (transform/tile-shuffle-k-means svg-swatch day
+                                                                      {:height tile-width-height
+                                                                       :width tile-width-height})
+                       _ (println "::: rasterizing")
+                       raster-swatch (transform/rasterize svg-swatch (inc idx_1_based))
+                       description (format
+                                     (str "Generated using selected source images, raw is present in the top left corner."
+                                          "\n.\n.\n"
+                                          "The top right corner is all of the pixels in the image"
+                                          " randomly shuffled up."
+                                          "\n.\n.\n"
+                                          "The bottom left corner in the"
+                                          " are the %s average colours as determined"
+                                          " by \"k-means clustering/Voronoi cells\". %s here represents the day"
+                                          " of the month."
+                                          "\n.\n.\n"
+                                          "The bottom right corner is the original image rasterized"
+                                          " by using the %s + 1 average colours, where %s represents"
+                                          " the day of the week"
+                                          " (ie, 1 for Monday, 2 for Tuesday, etc.)."
+                                          "\n.\n.\n"
+                                          "To read more about how we grouped and averaged the colours, see:"
+                                          " https://en.wikipedia.org/wiki/K-means_clustering"
+                                          "\n.\n.\n"
+                                          "To see the code which generated this, see:"
+                                          " http://bit.ly/be-nice-now-social-media-examples")
+                                     idx_1_based idx_1_based
+                                     day day)
+                       hiccup-svg (tile/grid
+                                    [svg-swatch
+                                     (path->svg hist-path
+                                                {:height tile-width-height
+                                                 :width tile-width-height})
+                                     k-means-swatch
+                                     (path->svg raster-swatch
+                                                {:height tile-width-height
+                                                 :width tile-width-height})]
+                                    2 2)]
+                   (render [month day]
+                           hiccup-svg
+                           description)
+                   (println ":: deleting hist ::: " hist-path)
+                   (io/delete-file hist-path)))]
+    (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 49))]
+      (gen-fn 12 idx_1_based day (nth svg-swatches (dec idx_1_based))))))
+
 (comment
   (instagram-2018-47)
-  (instagram-2018-48))
+  (instagram-2018-48)
+  (instagram-2018-49))
