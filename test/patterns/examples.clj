@@ -1,5 +1,6 @@
 (ns patterns.examples
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [java-time :as time]
             [patterns.core :as patterns]
             [patterns.graphs :as graphs]
@@ -262,7 +263,81 @@
     (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 49))]
       (gen-fn 12 idx_1_based day (nth svg-swatches (dec idx_1_based))))))
 
+(defn instagram-2018-50
+  []
+  (let [c (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                  2))
+        r c
+        gen-fn (fn [[tag attrs] idx_1_based day]
+                 (render [12 day]
+                         [:svg
+                          {:height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                           :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                          [:defs {}
+                           [:filter {:id "main"
+                                     :x 0 :y 0
+                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                     :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                            [:feImage {:result "i0" :xlink:href "#g0"}]
+                            [:feImage {:result "i1" :xlink:href "#g1"}]
+                            [:feImage {:result "i2" :xlink:href "#g2"}]
+                            [:feBlend {:result "b0" :in "i0" :in2 "i1" :mode "multiply"}]
+                            [:feBlend {:in "i2" :in2 "b0" :mode "multiply"}]]
+                           [:g {:id "g0"
+                                :transform (format "translate(%s, %s)"
+                                                   c (- c day))}
+                            [tag (assoc attrs
+                                   :fill "rgb(0, 255, 255)"
+                                   :stroke "rgb(0, 255, 255)")]]
+                           [:g {:id "g1"
+                                :transform (format "translate(%s, %s)"
+                                                   (- c day) (+ c day))}
+                            [tag (assoc attrs
+                                   :fill "rgb(255, 0, 255)"
+                                   :stroke "rgb(255, 0, 255)")]]
+                           [:g {:id "g2"
+                                :transform (format "translate(%s, %s)"
+                                                   (+ c day) (+ c day))}
+                            [tag (assoc attrs
+                                   :fill "rgb(255, 255, 0)"
+                                   :stroke "rgb(255, 255, 0)")]]]
+                          [:rect {:x 0 :y 0
+                                  :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  :style "filter:url(#main);"}]]
+                         (format
+                           (str "A shape which has %s points. The number"
+                                " of points represents the day of the week"
+                                " (ie, 1 for Monday, 2 for Tuesday, etc.)."
+                                "\n.\n.\n"
+                                "The shattered colour border surrounding the shape, has a"
+                                " width which is %s pixels to represent the day of the month."
+                                "\n.\n.\n"
+                                "To see the code which generated this, see:"
+                                " http://bit.ly/be-nice-now-social-media-examples")
+                           idx_1_based
+                           day)))
+        [circle line & polygons] (indexed-days-of-week (week->date 2018 50))]
+    (apply gen-fn [:circle {:cx 0 :cy 0 :r r}] circle)
+    (apply gen-fn [:line {:x1 (- (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                         4))) :y1 0
+                          :x2 (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                      4)) :y2 0
+                          :stroke-width r
+                          :stroke-linecap "round"}]
+           line)
+    (doseq [[idx_1_based day] polygons]
+      (gen-fn [:polygon {:points (->> (range 0 (* 2 Math/PI) (/ (* 2 Math/PI) idx_1_based))
+                                      (take idx_1_based)
+                                      (map (fn [degree]
+                                             (format "%s,%s"
+                                                     (int (* r (Math/cos (double degree))))
+                                                     (int (* r (Math/sin (double degree)))))))
+                                      (str/join " "))}]
+              idx_1_based day))))
+
 (comment
   (instagram-2018-47)
   (instagram-2018-48)
-  (instagram-2018-49))
+  (instagram-2018-49)
+  (instagram-2018-50))
