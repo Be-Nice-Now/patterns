@@ -13,7 +13,9 @@
             [inkspot.color-chart :as ink.cc]
             [inkspot.color-chart.lindsay :as ink.lindsay]
             [inkspot.color-chart.x11 :as ink.x11]
-            [mikera.image.core :as img])
+            [mikera.image.core :as img]
+            [patterns.utils :as utils]
+            [patterns.shatter :as shatter])
   (:import [java.time LocalDate]
            [java.awt Color]))
 
@@ -336,8 +338,126 @@
                                       (str/join " "))}]
               idx_1_based day))))
 
+(defn instagram-2018-51
+  []
+  (let [ceil (fn [n] (int (Math/ceil n)))
+        line-segments (fn [{[x0 y0] :start
+                            [x4 y4] :end}]
+                        (let [x-segment (ceil (/ (- x4 x0) 4))
+                              y-segment (ceil (/ (- y4 y0) 4))]
+                          {:segments (concat (for [i (range 0 4)]
+                                               [(+ (* i x-segment) x0)
+                                                (+ (* i y-segment) y0)])
+                                             [[x4 y4]])
+                           :length (Math/sqrt (+ (* x-segment x-segment)
+                                                 (* y-segment y-segment)))}))
+        arc-fn (fn [points]
+                 (let [{:keys [segments length]} (line-segments points)
+                       [x1 y1] (second segments)
+                       [x3 y3] (nth segments 3)
+                       [x4 y4] (last segments)]
+                   (format "L %s %s A %s %s 0 0 1 %s %s L %s %s"
+                           x1 y1
+                           (ceil length)
+                           (ceil length)
+                           x3 y3
+                           x4 y4)))
+        control-padding (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 10))
+        control-width-height (- INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                (* 2 control-padding))
+        border-control-points (zipmap (pipes/points 1 1 {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                         :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT})
+                                      (map (fn [[x y]]
+                                             [(+ control-padding
+                                                 x)
+                                              (+ control-padding
+                                                 y)])
+                                           (pipes/points 1 1 {:width control-width-height
+                                                              :height control-width-height})))
+        gen-fn (fn [month idx_1_based day]
+                 (let [control-points (repeatedly idx_1_based
+                                                  (fn []
+                                                    [(+ (rand-int control-width-height)
+                                                        control-padding)
+                                                     (+ (rand-int control-width-height)
+                                                        control-padding)]))
+                       description (format
+                                     (str "Generated using %s random points to"
+                                          " represent the day of the week (ie, 1 for Monday, 2 for Tuesday, etc.)."
+                                          " Each point is intersected twice, once each by two continuous lines"
+                                          " crossing the image."
+                                          "\n.\n.\n"
+                                          "Since today is %s, the colour scheme is %s"
+                                          "\n.\n.\n"
+                                          "The shattered colour border surrounding the shape, has a"
+                                          " width which is %s pixels to represent the day of the month."
+                                          "\n.\n.\n"
+                                          "To see the code which generated this, see:"
+                                          " http://bit.ly/be-nice-now-social-media-examples")
+                                     idx_1_based
+                                     (if (even? day)
+                                       "even"
+                                       "odd")
+                                     (if (even? day)
+                                       "light"
+                                       "dark")
+                                     day)
+                       line-fn (fn [_dimensions {[x0 y0] :start
+                                                 [xn yn] :end}]
+                                 (let [points (concat
+                                                [(get border-control-points
+                                                      (list x0 y0))]
+                                                (shuffle control-points)
+                                                [(get border-control-points
+                                                      (list xn yn))])
+                                       [x1 y1] (first points)]
+                                   [:path
+                                    {:d (format "M %s %s L %s %s %s L %s %s"
+                                                x0
+                                                y0
+                                                x1
+                                                y1
+                                                (str/join " "
+                                                          (map (fn [xy_n xy_n1]
+                                                                 (arc-fn {:start xy_n
+                                                                          :end xy_n1}))
+                                                               (butlast points)
+                                                               (rest points)))
+                                                xn
+                                                yn)
+                                     :stroke-linecap "square"
+                                     :stroke-linejoin "miter"}]))
+                       [colour shatter-fn background] (if (even? day)
+                                                        [month shatter/dark "white"]
+                                                        [(- 255 month) shatter/light "black"])
+                       {:keys [style path-fn]} (svg/multi-stroke [{:width 50
+                                                                   :colour {:r colour
+                                                                            :g colour
+                                                                            :b colour}}])
+                       [hiccup-svg] (pipes/swatches
+                                      1 1
+                                      {:line-fn (fn [& args]
+                                                  (path-fn (apply line-fn args)))
+                                       :style style
+                                       :grid-size (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                          2))})]
+                   (render [month day]
+                           [:svg
+                            {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                             :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                            [:defs {}]
+                            [:rect {:fill background
+                                    :x 0 :y 0
+                                    :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                    :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
+                            (shatter-fn hiccup-svg day)]
+                           description)))]
+    (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 51))]
+      (gen-fn 12 idx_1_based day))))
+
 (comment
   (instagram-2018-47)
   (instagram-2018-48)
   (instagram-2018-49)
-  (instagram-2018-50))
+  (instagram-2018-50)
+  (instagram-2018-51))
