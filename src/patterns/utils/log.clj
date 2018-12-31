@@ -1,6 +1,7 @@
 (ns patterns.utils.log
   (:require [clojure.string :as str]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [taoensso.tufte.timbre :as tufte.timbre])
   (:import [java.util.logging Level
                               Logger
                               LogManager]
@@ -48,9 +49,9 @@
   []
   (log/merge-config!
     {:level :debug
-     :output-fn default-output-fn}))
+     :output-fn default-output-fn})
+  (tufte.timbre/add-timbre-logging-handler! {}))
 (init!)
-
 
 (defmacro  with-context
   "Exactly like `taoensso.timbre/with-context`, except `deep-merge`s

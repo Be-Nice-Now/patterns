@@ -7,6 +7,7 @@
                  [clojure.java-time "0.3.2"]
                  [com.fzakaria/slf4j-timbre "0.3.12"]
                  [com.taoensso/timbre "4.10.0"]
+                 [com.taoensso/tufte "2.0.1"]
                  [org.slf4j/jcl-over-slf4j "1.7.25"]
                  [org.slf4j/jul-to-slf4j "1.7.25"]
                  [org.slf4j/log4j-over-slf4j "1.7.25"]
