@@ -448,8 +448,8 @@
       (gen-fn 12 idx_1_based day))))
 
 (comment
-  (trace/profile (instagram-2018-47))
-  (trace/profile (instagram-2018-48))
-  (trace/profile (instagram-2018-49))
-  (trace/profile (instagram-2018-50))
-  (trace/profile (instagram-2018-51)))
+  (trace/profile {} (instagram-2018-47))
+  (trace/profile {} (instagram-2018-48))
+  (trace/profile {} (instagram-2018-49))
+  (trace/profile {} (instagram-2018-50))
+  (trace/profile {} (instagram-2018-51)))
