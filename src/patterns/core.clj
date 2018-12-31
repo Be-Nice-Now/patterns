@@ -4,7 +4,7 @@
             [patterns.utils :as utils]
             [patterns.utils.svg :as svg])
   (:import [java.awt RenderingHints]
-           [java.io ByteArrayInputStream]
+           [java.io ByteArrayInputStream IOException]
            [java.nio.charset StandardCharsets]
            [java.util UUID]
            [org.apache.batik.anim.dom SAXSVGDocumentFactory]
@@ -101,6 +101,8 @@
 
 (defn- recursive-render-png
   [filename src]
+  (println (format "Rendering %s of size %s"
+                   filename (count (str src))))
   (let [pre-defs (take-while (comp not is-defs-element?)
                              src)
         [_def_tag def-attrs & def-body] (->> src
@@ -121,9 +123,11 @@
                                  tmp-filenames
                                  def--svg-elements)]
     (try
+      (println "----- Recurring...")
       (doseq [[tmp-filename tmp-src] (zipmap tmp-filenames
                                              def--svg-elements)]
         (recursive-render-png tmp-filename tmp-src))
+      (println "----- Done recurring")
       (render-document-to-png
         filename
         (utils/veccat
@@ -133,9 +137,19 @@
              def--non-svg-elements
              svg-image-elements)]
           post-defs))
+      (catch Exception e
+        (println (format "Exception encountered while trying to render %s. Snagged `src`."
+                         filename))
+        (def snag-failing-src src)
+        (throw e))
       (finally
         (doseq [tmp-filename tmp-filenames]
-          (io/delete-file tmp-filename))))))
+          (try
+            (io/delete-file tmp-filename)
+            (catch IOException e
+              (println (format "Couldn't delete file %s due to: %s"
+                               tmp-filename
+                               (str e))))))))))
 
 (defn render
   "Given a `src` Hiccup SVG, return a string HTML representation.
