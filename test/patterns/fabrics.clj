@@ -96,7 +96,7 @@
                        shapes-swatches
                        tile-width 1)
         {:keys [style path-fn]} (svg/multi-stroke [{:width (int (* swatch-dimension
-                                                                   (/ 1 8)))
+                                                                   (/ 3 8)))
                                                     :colour {:r 255 :g 255 :b 255}}])
         pipes-swatches (pipes/swatches
                          1 1
@@ -146,5 +146,5 @@
 (comment
   (patterns/render
     "./cmyk-rgb"
-    (cmyk-rgb 16)
+    (cmyk-rgb 8)
     :png))

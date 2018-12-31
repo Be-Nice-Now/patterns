@@ -4,7 +4,8 @@
             [patterns.utils :as utils]
             [patterns.utils.log :as u.log]
             [patterns.utils.svg :as svg]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [taoensso.tufte :as trace])
   (:import [java.awt RenderingHints]
            [java.io ByteArrayInputStream IOException]
            [java.nio.charset StandardCharsets]
@@ -100,7 +101,7 @@
   []
   (str "/tmp/patterns.core." (UUID/randomUUID)))
 
-(defn- recursive-render-png
+(trace/defnp ^:private recursive-render-png
   [filename src]
   (u.log/with-context {:filename-path [filename]
                        :file-sizes [(count (str src))]}
@@ -154,7 +155,7 @@
                            "Couldn't delete file %s"
                            tmp-filename)))))))))
 
-(defn render
+(trace/defnp render
   "Given a `src` Hiccup SVG, return a string HTML representation.
    If provided a filename, place the rendered SVG representation there.
    If provided an extension [:svg :png] render the Hiccup SVG as the given extension.

@@ -20,70 +20,64 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- init-means
-  [k pixels]
-  (trace/p :init-means
-    (k-means/init-means k pixels)))
-
 (defn- classified-centroids
   [k pixels]
   (let [centroids (trace/p :centroids
                     (k-means/centroids clust.euc-dist/distance
                                        clust.average/average
                                        pixels
-                                       (init-means k pixels)
+                                       (trace/p :init-means
+                                         (k-means/init-means k pixels))
                                        1.0))]
     (trace/p :classify
       (k-means/classify clust.euc-dist/distance
                         pixels
                         centroids))))
 
-(defn k-means-pixels-mapping
+(trace/defnp k-means-pixels-mapping
   "Returns {color: k-color, ...} map"
   [k pixels]
-  (trace/p :k-means-pixels-mapping
-    (let [pixels (->> pixels
-                      (remove (fn [argb]
-                                (zero? (:a argb))))
-                      (map (fn [{:keys [a r g b]}]
-                             [a r g b])))]
-      (->> (classified-centroids k pixels)
-           (into {}
-                 (mapcat (fn [[[k-a k-r k-g k-b] v]]
-                           (map (fn [[v-a v-r v-g v-b]]
-                                  [{:a v-a
-                                    :r v-r
-                                    :g v-g
-                                    :b v-b}
-                                   {:a (float (/ (Math/round ^Float (* k-a 100))
-                                                 100))
-                                    :r (int k-r)
-                                    :g (int k-g)
-                                    :b (int k-b)}])
-                                v))))))))
+  (let [pixels (->> pixels
+                    (remove (fn [argb]
+                              (zero? (:a argb))))
+                    (map (fn [{:keys [a r g b]}]
+                           [a r g b])))]
+    (->> (classified-centroids k pixels)
+         (into {}
+               (mapcat (fn [[[k-a k-r k-g k-b] v]]
+                         (map (fn [[v-a v-r v-g v-b]]
+                                [{:a v-a
+                                  :r v-r
+                                  :g v-g
+                                  :b v-b}
+                                 {:a (float (/ (Math/round ^Float (* k-a 100))
+                                               100))
+                                  :r (int k-r)
+                                  :g (int k-g)
+                                  :b (int k-b)}])
+                              v)))))))
 
-(defn k-means-pixels-data
+(trace/defnp k-means-pixels-data
   [k pixels]
-  (trace/p :k-means-pixels-data
-    (let [pixels (->> pixels
-                      (remove (fn [argb]
-                                (zero? (:a argb))))
-                      (map (fn [{:keys [a r g b]}]
-                             [a r g b])))
-          pixel-count (count pixels)
-          groups (->> (classified-centroids k pixels)
-                      (map (fn [[[a r g b] v]]
-                             [{:a (float (/ (Math/round ^Float (* a 100))
-                                            100))
-                               :r (int r)
-                               :g (int g)
-                               :b (int b)} (count v)])))]
-      (into {}
-            (map (fn [[k v]]
-                   [k (float (/ v pixel-count))]))
-            groups))))
+  (let [pixels (->> pixels
+                    (remove (fn [argb]
+                              (zero? (:a argb))))
+                    (map (fn [{:keys [a r g b]}]
+                           [a r g b])))
+        pixel-count (count pixels)
+        groups (->> (classified-centroids k pixels)
+                    (map (fn [[[a r g b] v]]
+                           [{:a (float (/ (Math/round ^Float (* a 100))
+                                          100))
+                             :r (int r)
+                             :g (int g)
+                             :b (int b)} (count v)])))]
+    (into {}
+          (map (fn [[k v]]
+                 [k (float (/ v pixel-count))]))
+          groups)))
 
-(defn k-means-png-data
+(trace/defnp k-means-png-data
   [filename k]
   (->> (img/get-pixels (img/load-image filename))
        (map img.colors/color)
@@ -95,7 +89,7 @@
                :b (.getBlue c)}))
        (k-means-pixels-data k)))
 
-(defn histogram-png-data
+(trace/defnp histogram-png-data
   [filename]
   (let [pixels (->> (img/get-pixels (img/load-image filename))
                     (map img.colors/color)
