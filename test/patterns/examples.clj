@@ -15,7 +15,9 @@
             [inkspot.color-chart.x11 :as ink.x11]
             [mikera.image.core :as img]
             [patterns.utils :as utils]
-            [patterns.shatter :as shatter])
+            [patterns.shatter :as shatter]
+            [taoensso.timbre :as log]
+            [taoensso.tufte :as trace])
   (:import [java.time LocalDate]
            [java.awt Color]))
 
@@ -54,14 +56,14 @@
                          month
                          day)]
     (try
-      (println description)
+      (log/info description)
       (patterns/render
         filename
         src
         :png)
       (spit (str filename ".txt") description)
       (catch Error e
-        (println e)
+        (log/error e)
         (throw (ex-info "Error" {} e))))))
 
 (defn instagram-2018-47
@@ -125,8 +127,7 @@
                      (map (fn [^Color c]
                             (.getRGB c))))
         colours-count (count colours)
-        noise-swatch-fn (fn [height-width]
-                          (println "::: generating noise ::: " height-width)
+        noise-swatch-fn (trace/fnp noise-swatch [height-width]
                           (let [noise-swatch-img (img/new-image height-width height-width)
                                 pixels (img/get-pixels noise-swatch-img)
                                 noise-swatch (patterns/tmp-resource)]
@@ -138,7 +139,6 @@
                                        noise-swatch
                                        "png"
                                        :quality 1.0)
-                            (println "::: noise generated")
                             noise-swatch))
         gen-fn (fn [month idx_1_based day]
                  (let [height-width (-> (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -163,9 +163,7 @@
                                           " http://bit.ly/be-nice-now-social-media-examples")
                                      idx_1_based idx_1_based
                                      day day)
-                       _ (println ":: clustering ::: " day)
                        cluster-data (graphs/k-means-png-data noise-swatch day)
-                       _ (println ":: clustering complete")
                        hiccup-svg (tile/grid
                                     [(graphs/bar-overlay
                                        [:svg
@@ -187,9 +185,7 @@
                    (render [month day]
                            hiccup-svg
                            description)
-                   (println ":: deleting ::: " noise-swatch)
                    (io/delete-file noise-swatch)))]
-
     (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 48))]
       (gen-fn 12 idx_1_based day))))
 
@@ -216,13 +212,10 @@
                                                     :width (img/width image)}))))
                            png-swatches)
         gen-fn (fn [month idx_1_based day svg-swatch]
-                 (let [_ (println "::: histing")
-                       hist-path (transform/shuffle svg-swatch)
-                       _ (println "::: clustering")
+                 (let [hist-path (transform/shuffle svg-swatch)
                        k-means-swatch (transform/tile-shuffle-k-means svg-swatch day
                                                                       {:height tile-width-height
                                                                        :width tile-width-height})
-                       _ (println "::: rasterizing")
                        raster-swatch (transform/rasterize svg-swatch (inc idx_1_based))
                        description (format
                                      (str "Generated using selected source images, raw is present in the top left corner."
@@ -260,7 +253,6 @@
                    (render [month day]
                            hiccup-svg
                            description)
-                   (println ":: deleting hist ::: " hist-path)
                    (io/delete-file hist-path)))]
     (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 49))]
       (gen-fn 12 idx_1_based day (nth svg-swatches (dec idx_1_based))))))
@@ -456,8 +448,8 @@
       (gen-fn 12 idx_1_based day))))
 
 (comment
-  (instagram-2018-47)
-  (instagram-2018-48)
-  (instagram-2018-49)
-  (instagram-2018-50)
-  (instagram-2018-51))
+  (trace/profile {} (instagram-2018-47))
+  (trace/profile {} (instagram-2018-48))
+  (trace/profile {} (instagram-2018-49))
+  (trace/profile {} (instagram-2018-50))
+  (trace/profile {} (instagram-2018-51)))

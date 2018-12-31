@@ -2,7 +2,10 @@
   (:require [clojure.java.io :as io]
             [hiccup.core :as html]
             [patterns.utils :as utils]
-            [patterns.utils.svg :as svg])
+            [patterns.utils.log :as u.log]
+            [patterns.utils.svg :as svg]
+            [taoensso.timbre :as log]
+            [taoensso.tufte :as trace])
   (:import [java.awt RenderingHints]
            [java.io ByteArrayInputStream IOException]
            [java.nio.charset StandardCharsets]
@@ -51,30 +54,29 @@
   [filename svg-src & {:keys [attempt
                               previous-ex]
                        :or {attempt 0}}]
-  (if (< 3 attempt)
-    (throw (ex-info "Too many attempts trying to render." {:filename filename
-                                                           :svg-src svg-src}
-                    previous-ex))
-    (try
-      (let [svg-document (with-open [in (ByteArrayInputStream. (.getBytes (src->string svg-src)
-                                                                          StandardCharsets/UTF_8))]
-                           (.createDocument (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")
-                                            (str "file:///" filename ".svg")
-                                            in))
-            {:keys [width height]} (svg/dimensions svg-src)]
-        (with-open [out-stream (io/output-stream (io/file filename))]
-          (let [in (TranscoderInput. svg-document)
-                out (TranscoderOutput. out-stream)
-                trans (high-quality-png-transcoder)]
-            (.addTranscodingHint trans SVGAbstractTranscoder/KEY_WIDTH (float width))
-            (.addTranscodingHint trans SVGAbstractTranscoder/KEY_HEIGHT (float height))
-            (.transcode trans in out))))
-      (catch TranscoderException ex
-        (print (format "render-document-to-png encountered exception on attempt: %s :: %s"
-                       attempt
-                       (pr-str ex)))
-        (render-document-to-png filename svg-src
-                                :attempt (inc attempt) :previous-ex ex)))))
+  (u.log/with-context {:attempt attempt}
+    (if (< 3 attempt)
+      (throw (ex-info "Too many attempts trying to render." {:filename filename
+                                                             :svg-src svg-src}
+                      previous-ex))
+      (try
+        (let [svg-document (with-open [in (ByteArrayInputStream. (.getBytes (src->string svg-src)
+                                                                            StandardCharsets/UTF_8))]
+                             (.createDocument (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")
+                                              (str "file:///" filename ".svg")
+                                              in))
+              {:keys [width height]} (svg/dimensions svg-src)]
+          (with-open [out-stream (io/output-stream (io/file filename))]
+            (let [in (TranscoderInput. svg-document)
+                  out (TranscoderOutput. out-stream)
+                  trans (high-quality-png-transcoder)]
+              (.addTranscodingHint trans SVGAbstractTranscoder/KEY_WIDTH (float width))
+              (.addTranscodingHint trans SVGAbstractTranscoder/KEY_HEIGHT (float height))
+              (.transcode trans in out))))
+        (catch TranscoderException ex
+          (log/warnf ex "`render-document-to-png` encountered exception. Retrying")
+          (render-document-to-png filename svg-src
+                                  :attempt (inc attempt) :previous-ex ex))))))
 
 (defn- is-defs-element?
   [element]
@@ -99,59 +101,61 @@
   []
   (str "/tmp/patterns.core." (UUID/randomUUID)))
 
-(defn- recursive-render-png
+(trace/defnp ^:private recursive-render-png
   [filename src]
-  (println (format "Rendering %s of size %s"
-                   filename (count (str src))))
-  (let [pre-defs (take-while (comp not is-defs-element?)
-                             src)
-        [_def_tag def-attrs & def-body] (->> src
-                                             (filter is-defs-element?)
-                                             first)
-        post-defs (drop (inc (count pre-defs))
-                        src)
-        def--svg-elements (filter is-id-svg-element?
-                                  def-body)
-        def--non-svg-elements (remove is-id-svg-element?
-                                      def-body)
-        tmp-filenames (repeatedly (count def--svg-elements) tmp-resource)
-        svg-image-elements (mapv (fn [filename [_svg-tag attrs]]
-                                   [:svg attrs
-                                    [:image (assoc (svg/dimensions [:svg attrs])
-                                              :xlink:href filename
-                                              :x 0 :y 0)]])
-                                 tmp-filenames
-                                 def--svg-elements)]
-    (try
-      (println "----- Recurring...")
-      (doseq [[tmp-filename tmp-src] (zipmap tmp-filenames
-                                             def--svg-elements)]
-        (recursive-render-png tmp-filename tmp-src))
-      (println "----- Done recurring")
-      (render-document-to-png
-        filename
-        (utils/veccat
-          pre-defs
-          [(utils/veccat
-             [:defs def-attrs]
-             def--non-svg-elements
-             svg-image-elements)]
-          post-defs))
-      (catch Exception e
-        (println (format "Exception encountered while trying to render %s. Snagged `src`."
-                         filename))
-        (def snag-failing-src src)
-        (throw e))
-      (finally
-        (doseq [tmp-filename tmp-filenames]
-          (try
-            (io/delete-file tmp-filename)
-            (catch IOException e
-              (println (format "Couldn't delete file %s due to: %s"
-                               tmp-filename
-                               (str e))))))))))
+  (u.log/with-context {:filename-path [filename]
+                       :file-sizes [(count (str src))]}
+    (let [pre-defs (take-while (comp not is-defs-element?)
+                               src)
+          [_def_tag def-attrs & def-body] (->> src
+                                               (filter is-defs-element?)
+                                               first)
+          post-defs (drop (inc (count pre-defs))
+                          src)
+          def--svg-elements (filter is-id-svg-element?
+                                    def-body)
+          def--non-svg-elements (remove is-id-svg-element?
+                                        def-body)
+          tmp-filenames (repeatedly (count def--svg-elements) tmp-resource)
+          svg-image-elements (mapv (fn [filename [_svg-tag attrs]]
+                                     [:svg attrs
+                                      [:image (assoc (svg/dimensions [:svg attrs])
+                                                :xlink:href filename
+                                                :x 0 :y 0)]])
+                                   tmp-filenames
+                                   def--svg-elements)]
+      (try
+        (when-let [tmp-files (seq (zipmap tmp-filenames
+                                          def--svg-elements))]
+          (log/info "Recurring...")
+          (doseq [[tmp-filename tmp-src] tmp-files]
+            (recursive-render-png tmp-filename tmp-src)))
+        (log/info "Rendering...")
+        (render-document-to-png
+          filename
+          (utils/veccat
+            pre-defs
+            [(utils/veccat
+               [:defs def-attrs]
+               def--non-svg-elements
+               svg-image-elements)]
+            post-defs))
+        (catch Exception e
+          (log/errorf e
+                      "Exception encountered while trying to render %s. Snagged `src` as `%s`."
+                      filename
+                      (str (def snag-failing-src [123])))
+          (throw e))
+        (finally
+          (doseq [tmp-filename tmp-filenames]
+            (try
+              (io/delete-file tmp-filename)
+              (catch IOException e
+                (log/warnf e
+                           "Couldn't delete file %s"
+                           tmp-filename)))))))))
 
-(defn render
+(trace/defnp render
   "Given a `src` Hiccup SVG, return a string HTML representation.
    If provided a filename, place the rendered SVG representation there.
    If provided an extension [:svg :png] render the Hiccup SVG as the given extension.

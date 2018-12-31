@@ -13,28 +13,36 @@
             [patterns.core :as patterns]
             [patterns.hiccup :as hiccup]
             [patterns.utils :as utils]
-            [patterns.utils.svg :as svg])
+            [patterns.utils.svg :as svg]
+            [taoensso.tufte :as trace])
   (:import [java.awt Color]
            [java.io File]))
 
 (set! *warn-on-reflection* true)
 
-(defn k-means-pixels-mapping
+(defn- classified-centroids
+  [k pixels]
+  (let [centroids (trace/p :centroids
+                    (k-means/centroids clust.euc-dist/distance
+                                       clust.average/average
+                                       pixels
+                                       (trace/p :init-means
+                                         (k-means/init-means k pixels))
+                                       1.0))]
+    (trace/p :classify
+      (k-means/classify clust.euc-dist/distance
+                        pixels
+                        centroids))))
+
+(trace/defnp k-means-pixels-mapping
   "Returns {color: k-color, ...} map"
   [k pixels]
-  (println "k-means-pixels-mapping ::: start")
   (let [pixels (->> pixels
                     (remove (fn [argb]
                               (zero? (:a argb))))
                     (map (fn [{:keys [a r g b]}]
                            [a r g b])))]
-    (println "k-means-pixels-mapping ::: clustering")
-    (->> (k-means/centroids clust.euc-dist/distance
-                            clust.average/average
-                            pixels
-                            (k-means/init-means k pixels)
-                            1.0)
-         (k-means/classify clust.euc-dist/distance pixels)
+    (->> (classified-centroids k pixels)
          (into {}
                (mapcat (fn [[[k-a k-r k-g k-b] v]]
                          (map (fn [[v-a v-r v-g v-b]]
@@ -49,36 +57,27 @@
                                   :b (int k-b)}])
                               v)))))))
 
-(defn k-means-pixels-data
+(trace/defnp k-means-pixels-data
   [k pixels]
-  (println "k-means-pixels-data ::: start")
   (let [pixels (->> pixels
                     (remove (fn [argb]
                               (zero? (:a argb))))
                     (map (fn [{:keys [a r g b]}]
                            [a r g b])))
         pixel-count (count pixels)
-        _ (println "k-means-pixels-data ::: clustering")
-        groups (->>
-                 (k-means/centroids clust.euc-dist/distance
-                                    clust.average/average
-                                    pixels
-                                    (k-means/init-means k pixels)
-                                    1.0)
-                 (k-means/classify clust.euc-dist/distance pixels)
-                 (map (fn [[[a r g b] v]]
-                        [{:a (float (/ (Math/round ^Float (* a 100))
-                                       100))
-                          :r (int r)
-                          :g (int g)
-                          :b (int b)} (count v)])))]
-    (println "k-means-pixels-data ::: returning")
+        groups (->> (classified-centroids k pixels)
+                    (map (fn [[[a r g b] v]]
+                           [{:a (float (/ (Math/round ^Float (* a 100))
+                                          100))
+                             :r (int r)
+                             :g (int g)
+                             :b (int b)} (count v)])))]
     (into {}
           (map (fn [[k v]]
                  [k (float (/ v pixel-count))]))
           groups)))
 
-(defn k-means-png-data
+(trace/defnp k-means-png-data
   [filename k]
   (->> (img/get-pixels (img/load-image filename))
        (map img.colors/color)
@@ -90,7 +89,7 @@
                :b (.getBlue c)}))
        (k-means-pixels-data k)))
 
-(defn histogram-png-data
+(trace/defnp histogram-png-data
   [filename]
   (let [pixels (->> (img/get-pixels (img/load-image filename))
                     (map img.colors/color)
