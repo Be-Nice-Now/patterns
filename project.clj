@@ -5,6 +5,11 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [clojure.java-time "0.3.2"]
+                 [com.fzakaria/slf4j-timbre "0.3.12"]
+                 [com.taoensso/timbre "4.10.0"]
+                 [org.slf4j/jcl-over-slf4j "1.7.25"]
+                 [org.slf4j/jul-to-slf4j "1.7.25"]
+                 [org.slf4j/log4j-over-slf4j "1.7.25"]
                  [org.threeten/threeten-extra "1.2"]
                  [hiccup "1.0.5"]
                  [net.mikera/imagez "0.12.0"]
