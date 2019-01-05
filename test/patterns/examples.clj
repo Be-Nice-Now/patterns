@@ -17,7 +17,8 @@
             [patterns.utils :as utils]
             [patterns.shatter :as shatter]
             [taoensso.timbre :as log]
-            [taoensso.tufte :as trace])
+            [taoensso.tufte :as trace]
+            [patterns.utils.log :as u.log])
   (:import [java.time LocalDate]
            [java.awt Color]))
 
@@ -46,13 +47,16 @@
   [[year month day]]
   (map (fn [local-date]
          [(.getValue (.getDayOfWeek ^LocalDate local-date))
+          (.getYear ^LocalDate local-date)
+          (.getMonthValue ^LocalDate local-date)
           (.getDayOfMonth ^LocalDate local-date)])
        (take 7
              (time/iterate time/plus (time/local-date year month day) (time/days 1)))))
 
 (defn render
-  [[month day] src description]
-  (let [filename (format "./doc/2018-%s-%s"
+  [[year month day] src description]
+  (let [filename (format "./doc/%s-%s-%s"
+                         year
                          month
                          day)]
     (try
@@ -68,7 +72,7 @@
 
 (defn instagram-2018-47
   []
-  (let [gen-fn (fn [month idx_1_based day]
+  (let [gen-fn (fn [idx_1_based year month day]
                  (let [pipe-endpoints (inc (rand-int 3))
                        line-fn (if (= 1 pipe-endpoints)
                                  svg/quadratic
@@ -112,11 +116,11 @@
                                        :grid-size grid-size})
                                     day day
                                     {:transform-fn tile/transform-rotate})]
-                   (render [month day]
+                   (render [year month day]
                            hiccup-svg
                            description)))]
-    (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 47))]
-      (gen-fn 11 idx_1_based day))))
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2018 47))]
+      (gen-fn idx_1_based year month day))))
 
 (defn instagram-2018-48
   []
@@ -140,7 +144,7 @@
                                        "png"
                                        :quality 1.0)
                             noise-swatch))
-        gen-fn (fn [month idx_1_based day]
+        gen-fn (fn [idx_1_based year month day]
                  (let [height-width (-> (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                            idx_1_based)
                                         (Math/ceil)
@@ -182,12 +186,12 @@
                                                :width height-width}))
                                        {:opacity 1.0})]
                                     idx_1_based idx_1_based)]
-                   (render [month day]
+                   (render [year month day]
                            hiccup-svg
                            description)
                    (io/delete-file noise-swatch)))]
-    (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 48))]
-      (gen-fn 12 idx_1_based day))))
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2018 48))]
+      (gen-fn idx_1_based year month day))))
 
 (defn instagram-2018-49
   []
@@ -211,7 +215,7 @@
                                                    {:height (img/height image)
                                                     :width (img/width image)}))))
                            png-swatches)
-        gen-fn (fn [month idx_1_based day svg-swatch]
+        gen-fn (fn [idx_1_based year month day svg-swatch]
                  (let [hist-path (transform/shuffle svg-swatch)
                        k-means-swatch (transform/tile-shuffle-k-means svg-swatch day
                                                                       {:height tile-width-height
@@ -250,20 +254,20 @@
                                                 {:height tile-width-height
                                                  :width tile-width-height})]
                                     2 2)]
-                   (render [month day]
+                   (render [year month day]
                            hiccup-svg
                            description)
                    (io/delete-file hist-path)))]
-    (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 49))]
-      (gen-fn 12 idx_1_based day (nth svg-swatches (dec idx_1_based))))))
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2018 49))]
+      (gen-fn idx_1_based year month day (nth svg-swatches (dec idx_1_based))))))
 
 (defn instagram-2018-50
   []
   (let [c (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                   2))
         r c
-        gen-fn (fn [[tag attrs] idx_1_based day]
-                 (render [12 day]
+        gen-fn (fn [[tag attrs] idx_1_based year month day]
+                 (render [year month day]
                          [:svg
                           {:height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                            :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
@@ -320,7 +324,7 @@
                           :stroke-width r
                           :stroke-linecap "round"}]
            line)
-    (doseq [[idx_1_based day] polygons]
+    (doseq [[idx_1_based year month day] polygons]
       (gen-fn [:polygon {:points (->> (range 0 (* 2 Math/PI) (/ (* 2 Math/PI) idx_1_based))
                                       (take idx_1_based)
                                       (map (fn [degree]
@@ -328,7 +332,7 @@
                                                      (int (* r (Math/cos (double degree))))
                                                      (int (* r (Math/sin (double degree)))))))
                                       (str/join " "))}]
-              idx_1_based day))))
+              idx_1_based year month day))))
 
 (defn instagram-2018-51
   []
@@ -366,7 +370,7 @@
                                                  y)])
                                            (pipes/points 1 1 {:width control-width-height
                                                               :height control-width-height})))
-        gen-fn (fn [month idx_1_based day]
+        gen-fn (fn [idx_1_based year month day]
                  (let [control-points (repeatedly idx_1_based
                                                   (fn []
                                                     [(+ (rand-int control-width-height)
@@ -433,7 +437,7 @@
                                        :style style
                                        :grid-size (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                                           2))})]
-                   (render [month day]
+                   (render [year month day]
                            [:svg
                             {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                              :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
@@ -444,12 +448,148 @@
                                     :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
                             (shatter-fn hiccup-svg day)]
                            description)))]
-    (doseq [[idx_1_based day] (indexed-days-of-week (week->date 2018 51))]
-      (gen-fn 12 idx_1_based day))))
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2018 51))]
+      (gen-fn idx_1_based year month day))))
+
+(defn instagram-2018-52
+  []
+  (let [colours (->> (concat ink.cc/web-safe-colors
+                             (vals ink.lindsay/swatch)
+                             (vals ink.x11/swatch))
+                     (map ink.color/coerce)
+                     (map (fn [^Color c]
+                            {:a (float (/ (.getAlpha c)
+                                          255))
+                             :r (.getRed c)
+                             :g (.getGreen c)
+                             :b (.getBlue c)})))
+        noise-swatch-fn (trace/fnp noise-swatch [palette height-width]
+                          (let [noise-swatch-img (img/new-image height-width height-width)
+                                pixels (img/get-pixels noise-swatch-img)
+                                noise-swatch (patterns/tmp-resource)
+                                palette-count (count palette)]
+                            (dotimes [i (* height-width height-width)]
+                              (aset pixels i
+                                    (.getRGB ^Color (ink.color/coerce (nth palette (rand-int palette-count))))))
+                            (img/set-pixels noise-swatch-img pixels)
+                            (img/write noise-swatch-img
+                                       noise-swatch
+                                       "png"
+                                       :quality 1.0)
+                            noise-swatch))
+        starting-dimensions (->> (map (partial bit-shift-left 1)
+                                      (range))
+                                 (take-while (partial > INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))
+                                 reverse)
+        gen-fn (fn [idx_1_based year month day]
+                 (let [starting-dimension (->> starting-dimensions
+                                               (take (inc day))
+                                               last)
+                       {:keys [to-delete
+                               hiccup-svg]}
+                       (loop [accum [:svg {:width starting-dimension
+                                           :height starting-dimension}
+                                     [:defs {}]
+                                     [:rect {:width starting-dimension
+                                             :height starting-dimension
+                                             :style "fill:rgb(0,0,0)"}]]
+                              to-delete []
+                              previous-colours {:r 255 :g 255 :b 255}
+                              square-dimension starting-dimension]
+                         (log/info "Accumulating..." {:to-delete to-delete
+                                                      :previous-colours previous-colours
+                                                      :square-dimension square-dimension})
+                         (if (< (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                   2)
+                                square-dimension)
+                           {:to-delete to-delete
+                            :hiccup-svg accum}
+                           (let [channel-swatches (into {}
+                                                        (for [[channel v] previous-colours]
+                                                          (let [_ (log/debug "Making swatch...")
+                                                                clamped-colours (filter (fn [c]
+                                                                                          (<= (get c channel) v))
+                                                                                        colours)
+                                                                noise-swatch (noise-swatch-fn clamped-colours
+                                                                                              square-dimension)
+                                                                cluster-data (->> (graphs/k-means-png-data
+                                                                                    noise-swatch
+                                                                                    (min square-dimension
+                                                                                         idx_1_based))
+                                                                                  (sort-by second)
+                                                                                  reverse)]
+                                                            (log/debug "...swatch made!")
+                                                            [channel
+                                                             {:to-delete noise-swatch
+                                                              :cluster-data cluster-data
+                                                              :colour (get-in (vec cluster-data) [0 0 channel])
+                                                              :swatch (graphs/bar-overlay
+                                                                        [:svg
+                                                                         {:height square-dimension
+                                                                          :width square-dimension}
+                                                                         [:defs {}]
+                                                                         [:image {:height square-dimension
+                                                                                  :width square-dimension
+                                                                                  :xlink:href noise-swatch
+                                                                                  :x 0 :y 0}]]
+                                                                        (graphs/bar
+                                                                          {:height square-dimension
+                                                                           :width square-dimension}
+                                                                          cluster-data)
+                                                                        {:opacity 1.0})}])))]
+                             (def snag [accum channel-swatches])
+                             (recur
+                               (tile/grid
+                                 (cons accum
+                                       [(get-in channel-swatches [:r :swatch])
+                                        (get-in channel-swatches [:b :swatch])
+                                        (get-in channel-swatches [:g :swatch])])
+                                 2 2
+                                 {:transform-fn tile/transform-rotate})
+                               (concat to-delete (map :to-delete (vals channel-swatches)))
+                               {:r (get-in channel-swatches [:r :colour])
+                                :g (get-in channel-swatches [:g :colour])
+                                :b (get-in channel-swatches [:b :colour])}
+                               (* 2 square-dimension)))))]
+                   (render [year month day]
+                           hiccup-svg
+                           (format
+                             (str "Generated using %s (day of the month) steps. Each step consists of"
+                                  " first using the image created by the previous step, and then"
+                                  " making three new images: one for each channel in the digital"
+                                  " colour spectrum (ie, red, green, and blue)."
+                                  "\n.\n.\n"
+                                  "Steps are linked together via sequential powers, similar to"
+                                  " the Fibonnaci sequence. However, unlike the classic nautilus shell"
+                                  " example, each step is able to rotate the previous image at will."
+                                  "\n.\n.\n"
+                                  "https://en.wikipedia.org/wiki/Fibonacci_number"
+                                  " https://en.wikipedia.org/wiki/Power_of_two"
+                                  " https://en.wikipedia.org/wiki/Golden_spiral"
+                                  "\n.\n.\n"
+                                  "Each step also overlays a the most common %s colours over"
+                                  " the given tile. %s is"
+                                  " the day of the week (ie, 1 for Monday, 2 for Tuesday, etc.)."
+                                  "\n.\n.\n"
+                                  "We used a similar method for making the overlayed colours back"
+                                  " in https://www.instagram.com/p/Bq7nzd3hYzg/"
+                                  "\n.\n.\n"
+                                  "To see the code which generated this, see:"
+                                  " http://bit.ly/be-nice-now-social-media-examples")
+                             day
+                             idx_1_based
+                             idx_1_based))
+                   (doseq [f to-delete]
+                     (log/debugf "deleting %s. Result: %s"
+                                 f
+                                 (io/delete-file f)))))]
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2018 52))]
+      (gen-fn idx_1_based year month day))))
 
 (comment
   (trace/profile {} (instagram-2018-47))
   (trace/profile {} (instagram-2018-48))
   (trace/profile {} (instagram-2018-49))
   (trace/profile {} (instagram-2018-50))
-  (trace/profile {} (instagram-2018-51)))
+  (trace/profile {} (instagram-2018-51))
+  (trace/profile {} (instagram-2018-52)))
