@@ -1,17 +1,7 @@
 (ns patterns.shatter
   (:require [patterns.utils.svg :as svg]
-            [patterns.core :as patterns]
-            [clojure.string :as str]
-            [patterns.utils :as utils]))
-
-(defn fe-matrix
-  [id in values]
-  [:feColorMatrix {:result id
-                   :in in
-                   :type "matrix"
-                   :values (->> values
-                                (map (partial str/join " "))
-                                (str/join " "))}])
+            [patterns.utils :as utils]
+            [patterns.utils.svg.filter :as svg.filter]))
 
 (defn shatter
   [src padding mode bitmap-matrix]
@@ -30,11 +20,11 @@
             [:feImage {:result (str "i" filter-id i)
                        :xlink:href (str "#" src-id i)}])
           (for [i (range 3)]
-            (fe-matrix (str "m" filter-id i)
-                       (str "i" filter-id i)
-                       (-> bitmap-matrix
-                           (assoc-in [i i] 1)
-                           (assoc-in [i 4] 0))))
+            (svg.filter/matrix (str "m" filter-id i)
+                               (str "i" filter-id i)
+                               (-> bitmap-matrix
+                                   (assoc-in [i i] 1)
+                                   (assoc-in [i 4] 0))))
           [[:feBlend {:result (str "b" filter-id)
                       :in (str "m" filter-id 0)
                       :in2 (str "m" filter-id 1)
