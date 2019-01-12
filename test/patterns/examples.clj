@@ -9,6 +9,7 @@
             [patterns.transform :as transform]
             [patterns.utils.paths :as utils.paths]
             [patterns.utils.svg :as svg]
+            [patterns.utils.svg.polygon :as polygon]
             [inkspot.color :as ink.color]
             [inkspot.color-chart :as ink.cc]
             [inkspot.color-chart.lindsay :as ink.lindsay]
@@ -18,7 +19,8 @@
             [patterns.shatter :as shatter]
             [taoensso.timbre :as log]
             [taoensso.tufte :as trace]
-            [patterns.utils.log :as u.log])
+            [patterns.utils.log :as u.log]
+            [patterns.layering :as layer])
   (:import [java.time LocalDate]
            [java.awt Color]))
 
@@ -37,7 +39,8 @@
 
 (defn week->date
   [year n]
-  (let [^LocalDate local-date (time/plus (time/local-date year)
+  (let [^LocalDate local-date (time/plus (time/adjust (time/local-date year)
+                                                      :first-in-month :monday)
                                          (time/days (* 7 n)))]
     [(.getYear local-date)
      (.getMonth local-date)
@@ -325,13 +328,8 @@
                           :stroke-linecap "round"}]
            line)
     (doseq [[idx_1_based year month day] polygons]
-      (gen-fn [:polygon {:points (->> (range 0 (* 2 Math/PI) (/ (* 2 Math/PI) idx_1_based))
-                                      (take idx_1_based)
-                                      (map (fn [degree]
-                                             (format "%s,%s"
-                                                     (int (* r (Math/cos (double degree))))
-                                                     (int (* r (Math/sin (double degree)))))))
-                                      (str/join " "))}]
+      (gen-fn (polygon/equilateral idx_1_based
+                                   r)
               idx_1_based year month day))))
 
 (defn instagram-2018-51
@@ -537,7 +535,6 @@
                                                                            :width square-dimension}
                                                                           cluster-data)
                                                                         {:opacity 1.0})}])))]
-                             (def snag [accum channel-swatches])
                              (recur
                                (tile/grid
                                  (cons accum
@@ -586,10 +583,146 @@
     (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2018 52))]
       (gen-fn idx_1_based year month day))))
 
+(defn instagram-2019-0
+  []
+  (let [colours (->> (concat ink.cc/web-safe-colors
+                             (vals ink.lindsay/swatch)
+                             (vals ink.x11/swatch))
+                     (map ink.color/coerce)
+                     (map (fn [^Color c]
+                            {:a (float (/ (.getAlpha c)
+                                          255))
+                             :r (.getRed c)
+                             :g (.getGreen c)
+                             :b (.getBlue c)})))
+        starting-dimensions (->> (map (partial bit-shift-left 1)
+                                      (range))
+                                 (take-while (partial > INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))
+                                 reverse)
+        tile-height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 4)
+        tile-width (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 20)
+        shape-wd (Math/sqrt (/ (* (/ tile-height 2)
+                                  (/ tile-height 2))
+                               2))
+        gen-fn (fn [idx_1_based year month day
+                    [gradient-start gradient-end]
+                    [fill-start fill-end]]
+                 (let [xn 20
+                       shape (layer/rotate
+                               [:svg {:width shape-wd :height shape-wd}
+                                [:defs {}]
+                                (polygon/equilateral (+ 2 idx_1_based)
+                                                     (/ shape-wd 2)
+                                                     {:fill gradient-end})
+                                (polygon/equilateral (+ 2 idx_1_based)
+                                                     (/ shape-wd 2.1)
+                                                     {:fill gradient-start})]
+                               (float (/ 360 35))
+                               (* 6 idx_1_based))
+                       gradients (fn [n]
+                                   (concat
+                                     (for [[idx shape-idx] (map list
+                                                      (reverse (range 0 n))
+                                                      (range 0 n))]
+                                       [:svg {:width tile-width
+                                              :height tile-height}
+                                        [:defs {}
+                                         (svg/->def shape "s")
+                                         [:linearGradient {:id "gradient"}
+                                          [:stop {:style (str "stop-color:" gradient-start)
+                                                  :offset "0%"}]
+                                          [:stop {:style (str "stop-color:" gradient-end)
+                                                  :offset "100%"}]]]
+                                        [:rect {:x (- (* idx
+                                                         (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                            n)))
+                                                :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                :fill "url(#gradient)"}]
+                                        (svg/use "s" {:x (- (* (dec shape-idx)
+                                                               (/ tile-height n)))})])
+                                     (when (> xn n)
+                                       (for [i (reverse (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                               (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (- xn n))))]
+                                         [:svg {:width tile-width
+                                                :height tile-height}
+                                          [:defs {}
+                                           [:linearGradient {:id "gradient"}
+                                            [:stop {:style (str "stop-color:" fill-start)
+                                                    :offset "0%"}]
+                                            [:stop {:style (str "stop-color:" fill-end)
+                                                    :offset "100%"}]]]
+                                          [:rect {:x (- i)
+                                                  :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                  :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                  :fill "url(#gradient)"}]]))))]
+                   (log/info {:edges (+ 2 idx_1_based)
+                              :shape (svg/dimensions shape)})
+                   (render [year month day]
+                           (tile/grid
+                             (concat
+                               (gradients 20)
+                               (gradients 19)
+                               (gradients month)
+                               (gradients day))
+                             xn 4)
+                           (format
+                             (str "The first row of colours is filled 20, the second is filled 19..."
+                                  " for, well...our curent year (honestly, we wrote 2018 first...)."
+                                  " The third and fourth rows are 1 (month) and %s (day)."
+                                  "\n.\n.\n"
+                                  "The tiles are filled with two things: (1) a gradient which starts at"
+                                  " %s, and ends at %s. (2) a shape which is rotated %s/7 around a circle,"
+                                  " and has %s sides. %s and %s (%s + 2) is representative of"
+                                  " the day of the week (ie, 1 for Monday, 2 for Tuesday, etc.). The"
+                                  " background is also a gradient. It starts at %s, and ends at %s."
+                                  "\n.\n.\n"
+                                  "To see the code which generated this, see:"
+                                  " http://bit.ly/be-nice-now-social-media-examples")
+                             day
+                             gradient-start gradient-end
+                             idx_1_based
+                             (+ 2 idx_1_based)
+                             idx_1_based
+                             (+ 2 idx_1_based)
+                             idx_1_based
+                             fill-start fill-end))))]
+    (doseq [[[idx_1_based year month day] gradient fill]
+            (map list
+                 (indexed-days-of-week (week->date 2019 0))
+                 [["orange" "red"]
+                  ["purple" "blue"]
+                  ["green" "yellow"]
+                  ["orange" "yellow"]
+                  ["red" "orange"]
+                  ["blue" "purple"]
+                  ["yellow" "green"]]
+                 [["blue" "cyan"]
+                  ["purple" "magenta"]
+                  ["yellow" "cyan"]
+                  ["cyan" "magenta"]
+                  ["cyan" "blue"]
+                  ["magenta" "purple"]
+                  ["cyan" "yellow"]
+                  ["magenta" "cyan"]])]
+      (gen-fn idx_1_based year month day gradient fill))))
+:cyan-magenta-yellow
 (comment
+  (patterns/render
+    "tmp-shape"
+    snag
+    :svg)
+
+  (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
+     (indexed-days-of-week (week->date 2018 0)))
+  (= [[1 2018 12 31] [2 2019 1 1] [3 2019 1 2] [4 2019 1 3] [5 2019 1 4] [6 2019 1 5] [7 2019 1 6]]
+     (indexed-days-of-week (week->date 2018 52)))
+  (= [[1 2019 1 7] [2 2019 1 8] [3 2019 1 9] [4 2019 1 10] [5 2019 1 11] [6 2019 1 12] [7 2019 1 13]]
+     (indexed-days-of-week (week->date 2019 0)))
   (trace/profile {} (instagram-2018-47))
   (trace/profile {} (instagram-2018-48))
   (trace/profile {} (instagram-2018-49))
   (trace/profile {} (instagram-2018-50))
   (trace/profile {} (instagram-2018-51))
-  (trace/profile {} (instagram-2018-52)))
+  (trace/profile {} (instagram-2018-52))
+  (trace/profile {} (instagram-2019-0)))

@@ -10,9 +10,9 @@
 
 (defn pick-alternate
   "Returns :pick-fn for `grid` which alternates through the srcs."
-  [{srcs :srcs yn :yn} [x y]]
+  [{srcs :srcs xn :xn} [x y]]
   (mod (+ x
-          (* y yn))
+          (* y xn))
        (count srcs)))
 
 (defn transform-rotate
