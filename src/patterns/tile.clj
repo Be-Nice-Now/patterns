@@ -15,6 +15,11 @@
           (* y xn))
        (count srcs)))
 
+(defn pick-random
+  "Returns :pick-fn for `grid` which chooses a random index for the srcs."
+  [{srcs :srcs} _]
+  (rand-int (count srcs)))
+
 (defn transform-rotate
   "A :transform-fn for `grid` which rotates src about
    the center of each tile.
