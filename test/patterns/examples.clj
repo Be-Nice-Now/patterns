@@ -585,21 +585,7 @@
 
 (defn instagram-2019-0
   []
-  (let [colours (->> (concat ink.cc/web-safe-colors
-                             (vals ink.lindsay/swatch)
-                             (vals ink.x11/swatch))
-                     (map ink.color/coerce)
-                     (map (fn [^Color c]
-                            {:a (float (/ (.getAlpha c)
-                                          255))
-                             :r (.getRed c)
-                             :g (.getGreen c)
-                             :b (.getBlue c)})))
-        starting-dimensions (->> (map (partial bit-shift-left 1)
-                                      (range))
-                                 (take-while (partial > INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))
-                                 reverse)
-        tile-height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 4)
+  (let [tile-height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 4)
         tile-width (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 20)
         shape-wd (Math/sqrt (/ (* (/ tile-height 2)
                                   (/ tile-height 2))
@@ -622,8 +608,8 @@
                        gradients (fn [n]
                                    (concat
                                      (for [[idx shape-idx] (map list
-                                                      (reverse (range 0 n))
-                                                      (range 0 n))]
+                                                                (reverse (range 0 n))
+                                                                (range 0 n))]
                                        [:svg {:width tile-width
                                               :height tile-height}
                                         [:defs {}
@@ -706,13 +692,115 @@
                   ["cyan" "yellow"]
                   ["magenta" "cyan"]])]
       (gen-fn idx_1_based year month day gradient fill))))
-:cyan-magenta-yellow
-(comment
-  (patterns/render
-    "tmp-shape"
-    snag
-    :svg)
 
+(defn instagram-2019-1
+  []
+  (let [cross-hatch-background (fn [n stroke]
+                                 (let [points-x (repeatedly n #(rand-int
+                                                                 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))
+                                       points-y (repeatedly n #(rand-int
+                                                                 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))
+                                       points (map list
+                                                   points-x
+                                                   points-y)
+                                       line-fn (fn [[x0 y0]]
+                                                 ; y = mx + b = -1x + b
+                                                 ; x0 + y0 = b
+                                                 ;; y1 = -x + b = b - x
+                                                 ;; y = -x2 + b => -(y - b) = x2 => b - y
+                                                 (let [padding -5
+                                                       xy (- (+ x0 y0)
+                                                             padding)]
+                                                   [:line {:x1 padding :y1 xy
+                                                           :x2 xy :y2 padding
+                                                           :stroke-width 1
+                                                           :stroke stroke}]))]
+                                   (utils/veccat
+                                     [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                            :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                      [:defs {}]]
+                                     (mapv line-fn points))))
+        rand-cube (fn [dimension]
+                    (let [center (int (/ dimension 2))
+                          top (rand-int center)
+                          bottom (+ (rand-int center)
+                                    center)
+                          format-str (str/join " " (repeat 4 "%s,%s"))]
+                      [:svg {:width dimension :height dimension}
+                       [:defs {}]
+                       [:polygon {:points (format format-str
+                                                  center 0
+                                                  dimension top
+                                                  center center
+                                                  0 top)
+                                  :style "stroke-width:2;stroke:cadetblue;fill:none;"}]
+                       [:polygon {:points (format format-str
+                                                  center dimension
+                                                  center center
+                                                  dimension top
+                                                  dimension bottom)
+                                  :style "stroke-width:4;stroke:darkcyan;fill:none;"}]
+                       [:polygon {:points (format format-str
+                                                  center dimension
+                                                  center center
+                                                  0 top
+                                                  0 bottom)
+                                  :style "stroke-width:8;stroke:lightseagreen;fill:none;"}]]))
+        swatch-wd (- (int (Math/sqrt (/ (* (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 2)
+                                             (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 2))
+                                          2)))
+                     2)
+        gen-fn (fn [idx_1_based year month day]
+                 (let [shape (layer/infinite
+                               (rand-cube swatch-wd)
+                               day)
+                       center (/ (:width (svg/dimensions shape))
+                                 2)
+                       gap (- (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                 2)
+                              center)
+                       maze (tile/grid
+                              (pipes/swatches
+                                1 1
+                                {:grid-size (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                               120)
+                                 :style "{stroke:ghostwhite;stroke-width:1;}"})
+                              120 120
+                              {:pick-fn tile/pick-random
+                               :transform-fn tile/transform-rotate})]
+                   (render [year month day]
+                           [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                            [:defs {}
+                             (svg/->def (cross-hatch-background (* day 50) "lightgray")
+                                        "background")
+                             (svg/->def maze "maze")
+                             (svg/->def shape "shape")]
+                            [:rect {:fill "whitesmoke"
+                                    :x 0 :y 0
+                                    :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                    :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
+                            (svg/use "background" {:x 0 :y 0})
+                            (svg/use "maze" {:x 0 :y 0})
+                            (svg/use "shape" {:x gap :y gap})]
+                           (format
+                             (str "%s (day) cubes, randomly skewed, infinitely rotated about"
+                                  " center."
+                                  "\n.\n.\n"
+                                  "The background is cross hatched and will get gradually"
+                                  " more filled in as the week goes on."
+                                  "\n.\n.\n"
+                                  "There is also an off-white maze layered on top of the"
+                                  " background, just for fun."
+                                  "\n.\n.\n"
+                                  "To see the code which generated this, see:"
+                                  " http://bit.ly/be-nice-now-social-media-examples")
+                             day))))]
+    (doseq [[idx_1_based year month day]
+            (indexed-days-of-week (week->date 2019 1))]
+      (gen-fn idx_1_based year month day))))
+
+(comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
   (= [[1 2018 12 31] [2 2019 1 1] [3 2019 1 2] [4 2019 1 3] [5 2019 1 4] [6 2019 1 5] [7 2019 1 6]]
@@ -725,4 +813,5 @@
   (trace/profile {} (instagram-2018-50))
   (trace/profile {} (instagram-2018-51))
   (trace/profile {} (instagram-2018-52))
-  (trace/profile {} (instagram-2019-0)))
+  (trace/profile {} (instagram-2019-0))
+  (trace/profile {} (instagram-2019-1)))

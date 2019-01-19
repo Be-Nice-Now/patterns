@@ -127,7 +127,6 @@
       (try
         (when-let [tmp-files (seq (zipmap tmp-filenames
                                           def--svg-elements))]
-          (log/debug "Recurring...")
           (doseq [[tmp-filename tmp-src] tmp-files]
             (recursive-render-png tmp-filename tmp-src)))
         (log/debug "Rendering...")
