@@ -747,8 +747,8 @@
                                                   0 bottom)
                                   :style "stroke-width:8;stroke:lightseagreen;fill:none;"}]]))
         swatch-wd (- (int (Math/sqrt (/ (* (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 2)
-                                             (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 2))
-                                          2)))
+                                           (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 2))
+                                        2)))
                      2)
         gen-fn (fn [idx_1_based year month day]
                  (let [shape (layer/infinite
@@ -800,6 +800,112 @@
             (indexed-days-of-week (week->date 2019 1))]
       (gen-fn idx_1_based year month day))))
 
+(defn instagram-2019-2
+  []
+  (let [line-control-colour "darkslategray"
+        line-gradient-colour "mediumaquamarine"
+        background-colour "blanchedalmond"
+        tile-gen (fn [tile-xy-count tile-lines-count]
+                   (let [tile-wh (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                         tile-xy-count))
+                         tile-padding (int (* tile-wh
+                                              (/ tile-xy-count
+                                                 (inc tile-xy-count))))
+                         gap (int (/ (- tile-wh tile-padding)
+                                     2))
+                         tile-control-lines (utils/veccat
+                                              [:g]
+                                              (for [[[x1 y1] [x2 y2]]
+                                                    (map (fn [exterior-point
+                                                              interior-point]
+                                                           [exterior-point
+                                                            (map (partial + gap)
+                                                                 interior-point)])
+                                                         (pipes/points 1 1 {:width tile-wh
+                                                                            :height tile-wh})
+                                                         (pipes/points 1 1 {:width tile-padding
+                                                                            :height tile-padding}))]
+                                                [:line {:x1 x1 :y1 y1
+                                                        :x2 x2 :y2 y2
+                                                        :stroke-width 1
+                                                        :stroke line-control-colour}]))
+                         generate-tile (fn [percentage]
+                                         (let [lines-id (gensym "l")
+                                               center (int (/ tile-padding
+                                                              2))
+                                               lines-per-side (/ tile-lines-count 4)
+                                               line-gen (fn [x1 y1]
+                                                          [:line {:x2 center
+                                                                  :y2 center
+                                                                  :x1 x1
+                                                                  :y1 y1
+                                                                  :stroke-width 1
+                                                                  :stroke (if (> percentage (rand))
+                                                                            line-gradient-colour
+                                                                            line-control-colour)}])]
+                                           [:svg {:width tile-wh
+                                                  :height tile-wh}
+                                            [:defs {}
+                                             (svg/->def [:svg {:width tile-padding
+                                                               :height tile-padding}
+                                                         (utils/veccat
+                                                           [:g]
+                                                           (for [x (repeatedly lines-per-side
+                                                                               (partial rand-int tile-padding))]
+                                                             (line-gen x 0))
+                                                           (for [x (repeatedly lines-per-side
+                                                                               (partial rand-int tile-padding))]
+                                                             (line-gen x tile-padding))
+                                                           (for [y (repeatedly lines-per-side
+                                                                               (partial rand-int tile-padding))]
+                                                             (line-gen 0 y))
+                                                           (for [y (repeatedly lines-per-side
+                                                                               (partial rand-int tile-padding))]
+                                                             (line-gen tile-padding y)))]
+                                                        lines-id)]
+                                            tile-control-lines
+                                            (svg/use lines-id
+                                                     {:x gap :y gap})]))
+                         generate-row-of-tiles (fn []
+                                                 (for [i (range tile-xy-count)]
+                                                   (generate-tile (/ (inc i) tile-xy-count))))
+                         tiles (apply concat
+                                      (repeatedly tile-xy-count generate-row-of-tiles))]
+                     (tile/grid
+                       tiles
+                       tile-xy-count tile-xy-count)))
+        gen-fn (fn [idx_1_based year month day]
+                 (render [year month day]
+                         [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                          [:defs {}
+                           (svg/->def (tile-gen idx_1_based (* day day))
+                                      "tiles")]
+                          [:rect {:fill background-colour
+                                  :x 0 :y 0
+                                  :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
+                          (svg/use "tiles" {:x 0 :y 0})]
+                         (format
+                           (str "Playing around with gradients this week. There are %s by %s tiles, where"
+                                " %s represents the day of the week (ie, 1 for Monday, 2 for Tuesday, etc.)."
+                                "\n.\n.\n"
+                                "Each tile has %s * %s lines for the day of the month."
+                                " Each line is randomly assigned a coordinate along a square,"
+                                " then drawn in toward the center."
+                                " The colour of each line is randomly chosen,"
+                                " with the probability of the line being dark decreasing as"
+                                " the tile moves toward the right. Due to this, it appears that there is a gradient"
+                                " effect."
+                                "\n.\n.\n"
+                                "To see the code which generated this, see:"
+                                " http://bit.ly/be-nice-now-social-media-examples")
+                           idx_1_based idx_1_based idx_1_based
+                           day day)))]
+    (doseq [[idx_1_based year month day]
+            (indexed-days-of-week (week->date 2019 1))]
+      (gen-fn idx_1_based year month day))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -814,4 +920,5 @@
   (trace/profile {} (instagram-2018-51))
   (trace/profile {} (instagram-2018-52))
   (trace/profile {} (instagram-2019-0))
-  (trace/profile {} (instagram-2019-1)))
+  (trace/profile {} (instagram-2019-1))
+  (trace/profile {} (instagram-2019-2)))

@@ -27,7 +27,7 @@
     (createRenderer []
       (let [add-hint (fn [hints k v] (.add hints (RenderingHints. k v)))
             renderer (proxy-super createRenderer)
-            hints (RenderingHints. RenderingHints/KEY_ALPHA_INTERPOLATION RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)]
+            hints (RenderingHints. nil nil)]
         (doto hints
           (add-hint RenderingHints/KEY_ALPHA_INTERPOLATION
                     RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
