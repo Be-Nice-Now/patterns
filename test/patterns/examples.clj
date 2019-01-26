@@ -903,7 +903,7 @@
                            idx_1_based idx_1_based idx_1_based
                            day day)))]
     (doseq [[idx_1_based year month day]
-            (indexed-days-of-week (week->date 2019 1))]
+            (indexed-days-of-week (week->date 2019 2))]
       (gen-fn idx_1_based year month day))))
 
 (comment
