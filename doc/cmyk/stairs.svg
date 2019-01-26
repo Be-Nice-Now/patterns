@@ -1,0 +1,18 @@
+<svg width="600" height="600" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <g id="step" >
+            <polygon points="150,200 150,150 0,75 0,125"
+                     style="stroke-width:10;stroke:black"/>
+            <polygon points="150,0 300,75 150,150 0,75"
+                     style="stroke-width:10;stroke:rgb(0,255,255)"/>
+            <polygon points="150,200 150,150 300,75 300,125"
+                     style="stroke-width:10;stroke:rgb(255,0,255)"/>
+        </g>
+    </defs>
+    <use xlink:href="#step" transform="translate(250,375)"/>
+    <use xlink:href="#step" transform="translate(200,300)"/>
+    <use xlink:href="#step" transform="translate(150,225)"/>
+    <use xlink:href="#step" transform="translate(100,150)"/>
+    <use xlink:href="#step" transform="translate(50,75)"/>
+    <use xlink:href="#step"/>
+</svg>
