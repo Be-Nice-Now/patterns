@@ -914,11 +914,16 @@
         padding (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                    40)
         gradient-panel--height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                  4)
+                                  5)
         gradient-panel--height--padding (- gradient-panel--height
                                            (* padding 2))
         gradient-panel--width--padding (- INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                           (* padding 2))
+        tile-y-count 3
+        tile-wh (/ gradient-panel--height--padding
+                   tile-y-count)
+        tile-x-count (/ gradient-panel--width--padding
+                        tile-wh)
         with-padding (fn [src]
                        (let [id (gensym "wp")]
                          [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -980,12 +985,10 @@
                                                 (mapv line-fn points))
                                               id)]
                                   (svg/use id {:x (- half-height)})]))
-        tile-gen (fn [tile-xy-count tile-lines-count]
-                   (let [tile-wh (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                         tile-xy-count))
-                         tile-padding (int (* tile-wh
-                                              (/ tile-xy-count
-                                                 (inc tile-xy-count))))
+        tile-gen (fn [tile-lines-count]
+                   (let [tile-padding (* tile-wh
+                                         (/ 6
+                                            7))
                          gap (int (/ (- tile-wh tile-padding)
                                      2))
                          tile-control-lines (utils/veccat
@@ -1042,18 +1045,19 @@
                                             (svg/use lines-id
                                                      {:x gap :y gap})]))
                          generate-row-of-tiles (fn []
-                                                 (for [i (range tile-xy-count)]
-                                                   (generate-tile (/ (inc i) tile-xy-count))))
+                                                 (for [i (range tile-x-count)]
+                                                   (generate-tile (/ (inc i) tile-x-count))))
                          tiles (apply concat
-                                      (repeatedly tile-xy-count generate-row-of-tiles))]
+                                      (repeatedly tile-y-count generate-row-of-tiles))]
                      (tile/grid
                        tiles
-                       tile-xy-count tile-xy-count)))
+                       tile-x-count tile-y-count)))
         gen-fn (fn [idx_1_based year month day]
                  (render [year month day]
-                         (let [tiles (tile-gen idx_1_based (* day day))
-                               stars (tile-gen idx_1_based (* day day))
-                               triangles (tile-gen idx_1_based (* day day))
+                         (let [tiles (with-padding
+                                       (tile-gen 150))
+                               stars (tile-gen (* day day))
+                               triangles (tile-gen (* day day))
                                verthatches (with-padding
                                              (vert-hatch-gradient (* day day)
                                                                   line-gradient-colour))
@@ -1064,7 +1068,7 @@
                              [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
                               [:defs {}
-                               ;(svg/->def tiles "tiles")
+                               (svg/->def tiles "tiles")
                                ;(svg/->def stars "stars")
                                ;(svg/->def triangles "triangles")
                                (svg/->def verthatches "verthatches")
@@ -1073,6 +1077,7 @@
                                       :x 0 :y 0
                                       :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                       :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
+                              (svg/use "tiles" {:x 0 :y 0})
                               (svg/use "verthatches" {:x 0 :y 270})
                               (svg/use "crosshatches" {:x 0 :y 540})]
                              #_(for [[y use-def] (map list
