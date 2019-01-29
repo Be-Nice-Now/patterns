@@ -1003,10 +1003,14 @@
                             tiles
                             tile-x-count tile-y-count
                             {:transform-fn tile/pi-rotate})))
-        tile-gen (fn [tile-lines-count]
-                   (let [inner-tile (- tile-wh tile-padding)
-                         gap (int (/ inner-tile
+        tile-gen (fn []
+                   (let [max-tile-lines-count 150
+                         inner-tile (- tile-wh tile-padding)
+                         gap (int (/ (- tile-wh inner-tile)
                                      2))
+                         center (int (/ inner-tile
+                                        2))
+                         max-lines-per-side (/ max-tile-lines-count 4)
                          tile-control-lines (utils/veccat
                                               [:g]
                                               (for [[[x1 y1] [x2 y2]]
@@ -1022,22 +1026,20 @@
                                                 [:line {:x1 x1 :y1 y1
                                                         :x2 x2 :y2 y2
                                                         :stroke-width 1
-                                                        :stroke line-control-colour}]))]
+                                                        :stroke line-control-colour}]))
+                         line-gen (fn [x1 y1]
+                                    [:line {:x2 center
+                                            :y2 center
+                                            :x1 x1
+                                            :y1 y1
+                                            :stroke-width 1
+                                            :stroke line-gradient-colour}])]
                      (tile-grid-gen
                        (fn [percentage]
                          (let [lines-id (gensym "l")
-                               center (int (/ inner-tile
-                                              2))
-                               lines-per-side (/ tile-lines-count 4)
-                               line-gen (fn [x1 y1]
-                                          [:line {:x2 center
-                                                  :y2 center
-                                                  :x1 x1
-                                                  :y1 y1
-                                                  :stroke-width 1
-                                                  :stroke (if (> percentage (rand))
-                                                            line-gradient-colour
-                                                            line-control-colour)}])]
+                               lines-per-side (Math/round
+                                                (float (* (- 1 percentage)
+                                                          max-lines-per-side)))]
                            [:svg {:width tile-wh
                                   :height tile-wh}
                             [:defs {}
@@ -1171,7 +1173,7 @@
         gen-fn (fn [idx_1_based year month day]
                  (render [year month day]
                          (let [tiles (with-padding
-                                       (tile-gen 150))
+                                       (tile-gen))
                                stars (with-padding
                                        (star-tile-gen))
                                triangles (with-padding
@@ -1196,13 +1198,13 @@
                                       :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                       :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
                              (for [[y use-def] (map list
-                                                      (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 5))
-                                                      ["tiles"
-                                                       "verthatches"
-                                                       "triangles"
-                                                       "crosshatches"
-                                                       "stars"])]
-                                 (svg/use use-def {:x 0 :y y}))))
+                                                    (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 5))
+                                                    ["tiles"
+                                                     "verthatches"
+                                                     "triangles"
+                                                     "crosshatches"
+                                                     "stars"])]
+                               (svg/use use-def {:x 0 :y y}))))
                          (format
                            (str "Playing around with gradients this week. There are %s by %s tiles, where"
                                 " %s represents the day of the week (ie, 1 for Monday, 2 for Tuesday, etc.)."
