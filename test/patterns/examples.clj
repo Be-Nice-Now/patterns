@@ -909,24 +909,23 @@
 (defn instagram-2019-3
   []
   (let [line-control-colour "darkslategray"
-        line-gradient-colour "mediumaquamarine"
+        line-gradient-colour "darkslategray"
         background-colour "azure"
         padding (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                    40)
         gradient-panel--height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                  5)
+                                  6)
         gradient-panel--height--padding (- gradient-panel--height
                                            (* padding 2))
         gradient-panel--width--padding (- INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                           (* padding 2))
         tile-y-count 3
-        tile-wh (/ gradient-panel--height--padding
-                   tile-y-count)
-        tile-x-count (/ gradient-panel--width--padding
-                        tile-wh)
-        tile-center (Math/round
-                      (float (/ tile-wh
-                                2)))
+        tile-wh (int (/ gradient-panel--height--padding
+                        tile-y-count))
+        tile-x-count (int (/ gradient-panel--width--padding
+                             tile-wh))
+        tile-center (float (/ tile-wh
+                              2))
         tile-padding (float (* tile-wh
                                (/ 1
                                   7)))
@@ -1011,22 +1010,6 @@
                          center (int (/ inner-tile
                                         2))
                          max-lines-per-side (/ max-tile-lines-count 4)
-                         tile-control-lines (utils/veccat
-                                              [:g]
-                                              (for [[[x1 y1] [x2 y2]]
-                                                    (map (fn [exterior-point
-                                                              interior-point]
-                                                           [exterior-point
-                                                            (map (partial + gap)
-                                                                 interior-point)])
-                                                         (pipes/points 1 1 {:width tile-wh
-                                                                            :height tile-wh})
-                                                         (pipes/points 1 1 {:width inner-tile
-                                                                            :height inner-tile}))]
-                                                [:line {:x1 x1 :y1 y1
-                                                        :x2 x2 :y2 y2
-                                                        :stroke-width 1
-                                                        :stroke line-control-colour}]))
                          line-gen (fn [x1 y1]
                                     [:line {:x2 center
                                             :y2 center
@@ -1060,9 +1043,42 @@
                                                                (partial rand-int inner-tile))]
                                              (line-gen inner-tile y)))]
                                         lines-id)]
-                            tile-control-lines
                             (svg/use lines-id
                                      {:x gap :y gap})])))))
+        control-tile-gen (fn []
+                           (let [max-tile-lines-count 80
+                                 max-lines-per-side (/ max-tile-lines-count 4)
+
+                                 line-gen (fn [x1 y1]
+                                            [:line {:x2 tile-center
+                                                    :y2 tile-center
+                                                    :x1 x1
+                                                    :y1 y1
+                                                    :stroke-width 1
+                                                    :stroke line-gradient-colour}])
+                                 line-segment (* 2 tile-padding)]
+                             (tile-grid-gen
+                               (fn [percentage]
+                                 (let [point-gen (fn []
+                                                   (let [lines-per-side (Math/round
+                                                                          (float (* (- 1 percentage)
+                                                                                    max-lines-per-side)))]
+                                                     (->> (partial rand-int line-segment)
+                                                          (repeatedly lines-per-side)
+                                                          (map (partial + half-tile-padding)))))]
+                                   [:svg {:width tile-wh
+                                          :height tile-wh}
+                                    [:defs {}]
+                                    (utils/veccat
+                                      [:g]
+                                      (for [x (point-gen)]
+                                        (line-gen x 0))
+                                      (for [x (point-gen)]
+                                        (line-gen x tile-wh))
+                                      (for [y (point-gen)]
+                                        (line-gen 0 y))
+                                      (for [y (point-gen)]
+                                        (line-gen tile-wh y)))])))))
         triangle-id (gensym "t")
         triangle-def (svg/->def [:svg {:width tile-wh
                                        :height tile-wh}
@@ -1162,7 +1178,6 @@
                            ;;h1 - -e- - - ->
                            ;;    | r |
                            ;;    v   v
-                           (def snag svg)
                            svg)
         star-tile-gen (fn []
                         (tile-grid-gen
@@ -1183,28 +1198,30 @@
                                                                   line-gradient-colour))
                                crosshatches (with-padding
                                               (cross-hatch-gradient (* day day)
-                                                                    line-gradient-colour))]
+                                                                    line-gradient-colour))
+                               control-tiles (with-padding
+                                               (control-tile-gen))
+                               order-of-panels [["tiles" tiles]
+                                                ["verthatches" verthatches]
+                                                ["triangles" triangles]
+                                                ["crosshatches" crosshatches]
+                                                ["stars" stars]
+                                                ["control-tiles" control-tiles]]]
                            (utils/veccat
                              [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
-                              [:defs {}
-                               (svg/->def tiles "tiles")
-                               (svg/->def stars "stars")
-                               (svg/->def triangles "triangles")
-                               (svg/->def verthatches "verthatches")
-                               (svg/->def crosshatches "crosshatches")]
+                              (utils/veccat
+                                [:defs {}]
+                                (for [[id src] order-of-panels]
+                                  (svg/->def src id)))
                               [:rect {:fill background-colour
                                       :x 0 :y 0
                                       :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                       :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
-                             (for [[y use-def] (map list
-                                                    (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 5))
-                                                    ["tiles"
-                                                     "verthatches"
-                                                     "triangles"
-                                                     "crosshatches"
-                                                     "stars"])]
-                               (svg/use use-def {:x 0 :y y}))))
+                             (for [[y [use-id]] (map list
+                                                     (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (count order-of-panels)))
+                                                     order-of-panels)]
+                               (svg/use use-id {:x 0 :y y}))))
                          (format
                            (str "Playing around with gradients this week. There are %s by %s tiles, where"
                                 " %s represents the day of the week (ie, 1 for Monday, 2 for Tuesday, etc.)."
