@@ -924,6 +924,12 @@
                    tile-y-count)
         tile-x-count (/ gradient-panel--width--padding
                         tile-wh)
+        tile-center (Math/round
+                      (float (/ tile-wh
+                                2)))
+        tile-padding (float (* tile-wh
+                               (/ 1
+                                  7)))
         with-padding (fn [src]
                        (let [id (gensym "wp")]
                          [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -985,11 +991,19 @@
                                                 (mapv line-fn points))
                                               id)]
                                   (svg/use id {:x (- half-height)})]))
+        tile-grid-gen (fn [generate-tile]
+                        (let [generate-row-of-tiles (fn []
+                                                      (for [i (range tile-x-count)]
+                                                        (generate-tile (/ (inc i) tile-x-count))))
+                              tiles (apply concat
+                                           (repeatedly tile-y-count generate-row-of-tiles))]
+                          (tile/grid
+                            tiles
+                            tile-x-count tile-y-count
+                            {:transform-fn tile/pi-rotate})))
         tile-gen (fn [tile-lines-count]
-                   (let [tile-padding (* tile-wh
-                                         (/ 6
-                                            7))
-                         gap (int (/ (- tile-wh tile-padding)
+                   (let [inner-tile (- tile-wh tile-padding)
+                         gap (int (/ inner-tile
                                      2))
                          tile-control-lines (utils/veccat
                                               [:g]
@@ -1001,63 +1015,112 @@
                                                                  interior-point)])
                                                          (pipes/points 1 1 {:width tile-wh
                                                                             :height tile-wh})
-                                                         (pipes/points 1 1 {:width tile-padding
-                                                                            :height tile-padding}))]
+                                                         (pipes/points 1 1 {:width inner-tile
+                                                                            :height inner-tile}))]
                                                 [:line {:x1 x1 :y1 y1
                                                         :x2 x2 :y2 y2
                                                         :stroke-width 1
-                                                        :stroke line-control-colour}]))
-                         generate-tile (fn [percentage]
-                                         (let [lines-id (gensym "l")
-                                               center (int (/ tile-padding
+                                                        :stroke line-control-colour}]))]
+                     (tile-grid-gen
+                       (fn [percentage]
+                         (let [lines-id (gensym "l")
+                               center (int (/ inner-tile
+                                              2))
+                               lines-per-side (/ tile-lines-count 4)
+                               line-gen (fn [x1 y1]
+                                          [:line {:x2 center
+                                                  :y2 center
+                                                  :x1 x1
+                                                  :y1 y1
+                                                  :stroke-width 1
+                                                  :stroke (if (> percentage (rand))
+                                                            line-gradient-colour
+                                                            line-control-colour)}])]
+                           [:svg {:width tile-wh
+                                  :height tile-wh}
+                            [:defs {}
+                             (svg/->def [:svg {:width inner-tile
+                                               :height inner-tile}
+                                         (utils/veccat
+                                           [:g]
+                                           (for [x (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen x 0))
+                                           (for [x (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen x inner-tile))
+                                           (for [y (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen 0 y))
+                                           (for [y (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen inner-tile y)))]
+                                        lines-id)]
+                            tile-control-lines
+                            (svg/use lines-id
+                                     {:x gap :y gap})])))))
+        triangle-id (gensym "t")
+        triangle-def (svg/->def [:svg {:width tile-wh
+                                       :height tile-wh}
+                                 [:defs {}]
+                                 (let [half-padding (float (/ tile-padding
                                                               2))
-                                               lines-per-side (/ tile-lines-count 4)
-                                               line-gen (fn [x1 y1]
-                                                          [:line {:x2 center
-                                                                  :y2 center
-                                                                  :x1 x1
-                                                                  :y1 y1
-                                                                  :stroke-width 1
-                                                                  :stroke (if (> percentage (rand))
-                                                                            line-gradient-colour
-                                                                            line-control-colour)}])]
-                                           [:svg {:width tile-wh
-                                                  :height tile-wh}
-                                            [:defs {}
-                                             (svg/->def [:svg {:width tile-padding
-                                                               :height tile-padding}
-                                                         (utils/veccat
-                                                           [:g]
-                                                           (for [x (repeatedly lines-per-side
-                                                                               (partial rand-int tile-padding))]
-                                                             (line-gen x 0))
-                                                           (for [x (repeatedly lines-per-side
-                                                                               (partial rand-int tile-padding))]
-                                                             (line-gen x tile-padding))
-                                                           (for [y (repeatedly lines-per-side
-                                                                               (partial rand-int tile-padding))]
-                                                             (line-gen 0 y))
-                                                           (for [y (repeatedly lines-per-side
-                                                                               (partial rand-int tile-padding))]
-                                                             (line-gen tile-padding y)))]
-                                                        lines-id)]
-                                            tile-control-lines
-                                            (svg/use lines-id
-                                                     {:x gap :y gap})]))
-                         generate-row-of-tiles (fn []
-                                                 (for [i (range tile-x-count)]
-                                                   (generate-tile (/ (inc i) tile-x-count))))
-                         tiles (apply concat
-                                      (repeatedly tile-y-count generate-row-of-tiles))]
-                     (tile/grid
-                       tiles
-                       tile-x-count tile-y-count)))
+                                       corner (+ half-padding
+                                                 (* half-padding (Math/sqrt 2)))]
+                                   [:polygon {:points (format "%s,%s %s,%s %s,%s"
+                                                              half-padding
+                                                              corner
+
+                                                              half-padding
+                                                              (- tile-wh corner)
+
+                                                              (- tile-center half-padding)
+                                                              tile-center)
+                                              :style (format "fill:%s"
+                                                             line-gradient-colour)}])]
+                                triangle-id)
+        triangle-tiles (->> (for [triangle-count (range 5)]
+                              (utils/veccat
+                                [:svg {:width tile-wh
+                                       :height tile-wh}
+                                 [:defs {} triangle-def]]
+                                (for [rotation (->> (range 0 360 90)
+                                                    (take triangle-count))]
+                                  (svg/use triangle-id
+                                           {:transform (format "rotate(%s %s %s)"
+                                                               rotation
+                                                               tile-center
+                                                               tile-center)}))))
+                            reverse
+                            vec)
+        triangle-weights (fn [percentage]
+                           (let [distances (map #(Math/abs (float (- percentage %)))
+                                                (range 0 1 (/ (count triangle-tiles))))
+                                 skew-for-closest (->> distances
+                                                       (map (partial - 1))
+                                                       (map (fn [x]
+                                                              (* x
+                                                                 (Math/pow 2
+                                                                           (* 5 x))))))
+                                 normalize-by (apply + skew-for-closest)
+                                 weights (map #(/ % normalize-by)
+                                              skew-for-closest)]
+                             weights))
+        triangle--percentage->idx-fn (memoize
+                                       (fn [percentage]
+                                         (transform/bin-idx (triangle-weights percentage))))
+        triangle-tile-gen (fn []
+                            (tile-grid-gen
+                              (fn [percentage]
+                                (triangle-tiles ((triangle--percentage->idx-fn percentage)
+                                                  (rand))))))
         gen-fn (fn [idx_1_based year month day]
                  (render [year month day]
                          (let [tiles (with-padding
                                        (tile-gen 150))
                                stars (tile-gen (* day day))
-                               triangles (tile-gen (* day day))
+                               triangles (with-padding
+                                           (triangle-tile-gen))
                                verthatches (with-padding
                                              (vert-hatch-gradient (* day day)
                                                                   line-gradient-colour))
@@ -1070,7 +1133,7 @@
                               [:defs {}
                                (svg/->def tiles "tiles")
                                ;(svg/->def stars "stars")
-                               ;(svg/->def triangles "triangles")
+                               (svg/->def triangles "triangles")
                                (svg/->def verthatches "verthatches")
                                (svg/->def crosshatches "crosshatches")]
                               [:rect {:fill background-colour
@@ -1078,10 +1141,11 @@
                                       :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                       :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
                               (svg/use "tiles" {:x 0 :y 0})
-                              (svg/use "verthatches" {:x 0 :y 270})
-                              (svg/use "crosshatches" {:x 0 :y 540})]
+                              (svg/use "verthatches" {:x 0 :y 216})
+                              (svg/use "triangles" {:x 0 :y 432})
+                              (svg/use "crosshatches" {:x 0 :y 648})]
                              #_(for [[y use-def] (map list
-                                                      (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 4))
+                                                      (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 5))
                                                       ["tiles"
                                                        "stars"
                                                        "triangles"
