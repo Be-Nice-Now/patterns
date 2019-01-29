@@ -930,6 +930,8 @@
         tile-padding (float (* tile-wh
                                (/ 1
                                   7)))
+        half-tile-padding (float (/ tile-padding
+                                    2))
         with-padding (fn [src]
                        (let [id (gensym "wp")]
                          [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -1063,18 +1065,16 @@
         triangle-def (svg/->def [:svg {:width tile-wh
                                        :height tile-wh}
                                  [:defs {}]
-                                 (let [half-padding (float (/ tile-padding
-                                                              2))
-                                       corner (+ half-padding
-                                                 (* half-padding (Math/sqrt 2)))]
+                                 (let [corner (+ half-tile-padding
+                                                 (* half-tile-padding (Math/sqrt 2)))]
                                    [:polygon {:points (format "%s,%s %s,%s %s,%s"
-                                                              half-padding
+                                                              half-tile-padding
                                                               corner
 
-                                                              half-padding
+                                                              half-tile-padding
                                                               (- tile-wh corner)
 
-                                                              (- tile-center half-padding)
+                                                              (- tile-center half-tile-padding)
                                                               tile-center)
                                               :style (format "fill:%s"
                                                              line-gradient-colour)}])]
@@ -1114,11 +1114,66 @@
                               (fn [percentage]
                                 (triangle-tiles ((triangle--percentage->idx-fn percentage)
                                                   (rand))))))
+        star-tile-empty [:svg {:width tile-wh
+                               :height tile-wh}
+                         [:defs {}]
+                         [:line {:x2 tile-center
+                                 :y2 0
+                                 :x1 tile-center
+                                 :y1 tile-wh
+                                 :stroke-width tile-padding
+                                 :stroke line-gradient-colour}]
+                         [:line {:x2 0
+                                 :y2 tile-center
+                                 :x1 tile-wh
+                                 :y1 tile-center
+                                 :stroke-width tile-padding
+                                 :stroke line-gradient-colour}]]
+        star-tile-filled (let [h0v0 (- tile-center half-tile-padding)
+                               h1v1 (+ tile-center half-tile-padding)
+                               Q (fn [& args]
+                                   (format "Q %s"
+                                           (str/join " " (flatten args))))
+                               m (fn [h-or-v & [direction]]
+                                   (format "%s %s"
+                                           (name h-or-v)
+                                           ((or direction identity)
+                                             tile-padding)))
+                               svg [:svg {:width tile-wh
+                                          :height tile-wh}
+                                    [:defs {}]
+                                    [:path {:fill line-gradient-colour
+                                            :d (format "M 0 %s %s"
+                                                       h0v0
+                                                       (str/join " " [(Q [h0v0 h0v0] [h0v0 0])
+                                                                      (m :h)
+                                                                      (Q [h1v1 h0v0] [tile-wh h0v0])
+                                                                      (m :v)
+                                                                      (Q [h1v1 h1v1] [h1v1 tile-wh])
+                                                                      (m :h -)
+                                                                      (Q [h0v0 h1v1] [0 h1v1])]))}]]]
+                           ;;    | c |
+                           ;;   v0 e v1
+                           ;;    | n |
+                           ;;h0 - -t- - - ->
+                           ;; c-e-n-t-e-r- ->
+                           ;;h1 - -e- - - ->
+                           ;;    | r |
+                           ;;    v   v
+                           (def snag svg)
+                           svg)
+        star-tile-gen (fn []
+                        (tile-grid-gen
+                          (fn [percentage]
+                            (if (> percentage (rand))
+                              star-tile-empty
+                              star-tile-filled))))
         gen-fn (fn [idx_1_based year month day]
                  (render [year month day]
                          (let [tiles (with-padding
                                        (tile-gen 150))
-                               stars (tile-gen (* day day))
+                               stars (with-padding
+                                       (star-tile-gen))
                                triangles (with-padding
                                            (triangle-tile-gen))
                                verthatches (with-padding
@@ -1132,24 +1187,21 @@
                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
                               [:defs {}
                                (svg/->def tiles "tiles")
-                               ;(svg/->def stars "stars")
+                               (svg/->def stars "stars")
                                (svg/->def triangles "triangles")
                                (svg/->def verthatches "verthatches")
                                (svg/->def crosshatches "crosshatches")]
                               [:rect {:fill background-colour
                                       :x 0 :y 0
                                       :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                      :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
-                              (svg/use "tiles" {:x 0 :y 0})
-                              (svg/use "verthatches" {:x 0 :y 216})
-                              (svg/use "triangles" {:x 0 :y 432})
-                              (svg/use "crosshatches" {:x 0 :y 648})]
-                             #_(for [[y use-def] (map list
+                                      :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
+                             (for [[y use-def] (map list
                                                       (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 5))
                                                       ["tiles"
-                                                       "stars"
+                                                       "verthatches"
                                                        "triangles"
-                                                       "crosshatches"])]
+                                                       "crosshatches"
+                                                       "stars"])]
                                  (svg/use use-def {:x 0 :y y}))))
                          (format
                            (str "Playing around with gradients this week. There are %s by %s tiles, where"
