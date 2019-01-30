@@ -908,11 +908,10 @@
 
 (defn instagram-2019-3
   []
-  (let [line-control-colour "darkslategray"
-        line-gradient-colour "darkslategray"
-        background-colour "azure"
+  (let [line-gradient-colour "darkslategray"
+        background-colour "rgb(250,250,250)"
         padding (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                   40)
+                   120)
         gradient-panel--height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                   6)
         gradient-panel--height--padding (- gradient-panel--height
@@ -1002,7 +1001,7 @@
                             tiles
                             tile-x-count tile-y-count
                             {:transform-fn tile/pi-rotate})))
-        tile-gen (fn []
+        tile-gen (fn [colour]
                    (let [max-tile-lines-count 150
                          inner-tile (- tile-wh tile-padding)
                          gap (int (/ (- tile-wh inner-tile)
@@ -1016,7 +1015,7 @@
                                             :x1 x1
                                             :y1 y1
                                             :stroke-width 1
-                                            :stroke line-gradient-colour}])]
+                                            :stroke colour}])]
                      (tile-grid-gen
                        (fn [percentage]
                          (let [lines-id (gensym "l")
@@ -1045,7 +1044,7 @@
                                         lines-id)]
                             (svg/use lines-id
                                      {:x gap :y gap})])))))
-        control-tile-gen (fn []
+        control-tile-gen (fn [colour]
                            (let [max-tile-lines-count 80
                                  max-lines-per-side (/ max-tile-lines-count 4)
 
@@ -1055,7 +1054,7 @@
                                                     :x1 x1
                                                     :y1 y1
                                                     :stroke-width 1
-                                                    :stroke line-gradient-colour}])
+                                                    :stroke colour}])
                                  line-segment (* 2 tile-padding)]
                              (tile-grid-gen
                                (fn [percentage]
