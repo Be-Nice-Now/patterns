@@ -908,8 +908,7 @@
 
 (defn instagram-2019-3
   []
-  (let [line-gradient-colour "darkslategray"
-        background-colour "rgb(250,250,250)"
+  (let [background-colour "rgb(250,250,250)"
         padding (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                    120)
         gradient-panel--height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
