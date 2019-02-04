@@ -906,6 +906,348 @@
             (indexed-days-of-week (week->date 2019 2))]
       (gen-fn idx_1_based year month day))))
 
+(defn instagram-2019-3
+  []
+  (let [line-gradient-colour "darkslategray"
+        background-colour "rgb(250,250,250)"
+        padding (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                   120)
+        gradient-panel--height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  6)
+        gradient-panel--height--padding (- gradient-panel--height
+                                           (* padding 2))
+        gradient-panel--width--padding (- INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                          (* padding 2))
+        tile-y-count 3
+        tile-wh (int (/ gradient-panel--height--padding
+                        tile-y-count))
+        tile-x-count (int (/ gradient-panel--width--padding
+                             tile-wh))
+        tile-center (float (/ tile-wh
+                              2))
+        tile-padding (float (* tile-wh
+                               (/ 1
+                                  7)))
+        half-tile-padding (float (/ tile-padding
+                                    2))
+        with-padding (fn [src]
+                       (let [id (gensym "wp")]
+                         [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                :height gradient-panel--height}
+                          [:defs {}
+                           (svg/->def src id)]
+                          (svg/use id {:x padding :y padding})]))
+        cross-hatch-points (fn [n width]
+                             (->> (repeatedly n rand)
+                                  (map (fn [seed]
+                                         ; Quarter of a Circle
+                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
+                                         (* width
+                                            (inc (- (Math/sqrt
+                                                      (- 1 (* seed seed))))))))
+                                  (map #(Math/round %))))
+        vert-hatch-gradient (fn [n stroke]
+                              (let [points (cross-hatch-points n gradient-panel--width--padding)
+                                    line-fn (fn [point]
+                                              [:line {:x1 point :y1 0
+                                                      :x2 point :y2 gradient-panel--height--padding
+                                                      :stroke-width 1
+                                                      :stroke stroke}])]
+                                (utils/veccat
+                                  [:svg {:width gradient-panel--width--padding
+                                         :height gradient-panel--height--padding}
+                                   [:defs {}]]
+                                  (mapv line-fn points))))
+        cross-hatch-gradient (fn [n stroke]
+                               (let [id (gensym "chg")
+                                     half-height (Math/round
+                                                   (float (/ gradient-panel--height--padding
+                                                             2)))
+                                     overflow-width (+ gradient-panel--width--padding
+                                                       gradient-panel--height--padding)
+                                     points (cross-hatch-points n overflow-width)
+                                     line-fn (fn [point]
+                                               (let [padding -5
+                                                     ; y = mx + b
+                                                     ;; m = -1
+                                                     ;; x0, y1 = padding
+                                                     ;; half-height = - point + b
+                                                     ;; => b = half-height + point
+                                                     ;; => y0, x1 = b - padding
+                                                     y0x1 (- (+ half-height
+                                                                point)
+                                                             padding)]
+                                                 [:line {:x1 padding :y1 y0x1
+                                                         :x2 y0x1 :y2 padding
+                                                         :stroke-width 1
+                                                         :stroke stroke}]))]
+                                 [:svg {:width gradient-panel--width--padding
+                                        :height gradient-panel--height--padding}
+                                  [:defs {}
+                                   (svg/->def (utils/veccat
+                                                [:svg {:width overflow-width
+                                                       :height gradient-panel--height--padding}
+                                                 [:defs {}]]
+                                                (mapv line-fn points))
+                                              id)]
+                                  (svg/use id {:x (- half-height)})]))
+        tile-grid-gen (fn [generate-tile]
+                        (let [generate-row-of-tiles (fn []
+                                                      (for [i (range tile-x-count)]
+                                                        (generate-tile (/ (inc i) tile-x-count))))
+                              tiles (apply concat
+                                           (repeatedly tile-y-count generate-row-of-tiles))]
+                          (tile/grid
+                            tiles
+                            tile-x-count tile-y-count
+                            {:transform-fn tile/pi-rotate})))
+        tile-gen (fn [colour]
+                   (let [max-tile-lines-count 150
+                         inner-tile (- tile-wh tile-padding)
+                         gap (int (/ (- tile-wh inner-tile)
+                                     2))
+                         center (int (/ inner-tile
+                                        2))
+                         max-lines-per-side (/ max-tile-lines-count 4)
+                         line-gen (fn [x1 y1]
+                                    [:line {:x2 center
+                                            :y2 center
+                                            :x1 x1
+                                            :y1 y1
+                                            :stroke-width 1
+                                            :stroke colour}])]
+                     (tile-grid-gen
+                       (fn [percentage]
+                         (let [lines-id (gensym "l")
+                               lines-per-side (Math/round
+                                                (float (* (- 1 percentage)
+                                                          max-lines-per-side)))]
+                           [:svg {:width tile-wh
+                                  :height tile-wh}
+                            [:defs {}
+                             (svg/->def [:svg {:width inner-tile
+                                               :height inner-tile}
+                                         (utils/veccat
+                                           [:g]
+                                           (for [x (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen x 0))
+                                           (for [x (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen x inner-tile))
+                                           (for [y (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen 0 y))
+                                           (for [y (repeatedly lines-per-side
+                                                               (partial rand-int inner-tile))]
+                                             (line-gen inner-tile y)))]
+                                        lines-id)]
+                            (svg/use lines-id
+                                     {:x gap :y gap})])))))
+        control-tile-gen (fn [colour]
+                           (let [max-tile-lines-count 80
+                                 max-lines-per-side (/ max-tile-lines-count 4)
+
+                                 line-gen (fn [x1 y1]
+                                            [:line {:x2 tile-center
+                                                    :y2 tile-center
+                                                    :x1 x1
+                                                    :y1 y1
+                                                    :stroke-width 1
+                                                    :stroke colour}])
+                                 line-segment (* 2 tile-padding)]
+                             (tile-grid-gen
+                               (fn [percentage]
+                                 (let [point-gen (fn []
+                                                   (let [lines-per-side (Math/round
+                                                                          (float (* (- 1 percentage)
+                                                                                    max-lines-per-side)))]
+                                                     (->> (partial rand-int line-segment)
+                                                          (repeatedly lines-per-side)
+                                                          (map (partial + half-tile-padding)))))]
+                                   [:svg {:width tile-wh
+                                          :height tile-wh}
+                                    [:defs {}]
+                                    (utils/veccat
+                                      [:g]
+                                      (for [x (point-gen)]
+                                        (line-gen x 0))
+                                      (for [x (point-gen)]
+                                        (line-gen x tile-wh))
+                                      (for [y (point-gen)]
+                                        (line-gen 0 y))
+                                      (for [y (point-gen)]
+                                        (line-gen tile-wh y)))])))))
+        triangle-tile-gen (fn [colour]
+                            (let [triangle-id (gensym "t")
+                                  triangle-def (svg/->def [:svg {:width tile-wh
+                                                                 :height tile-wh}
+                                                           [:defs {}]
+                                                           (let [corner (+ half-tile-padding
+                                                                           (* half-tile-padding (Math/sqrt 2)))]
+                                                             [:polygon {:points (format "%s,%s %s,%s %s,%s"
+                                                                                        half-tile-padding
+                                                                                        corner
+
+                                                                                        half-tile-padding
+                                                                                        (- tile-wh corner)
+
+                                                                                        (- tile-center half-tile-padding)
+                                                                                        tile-center)
+                                                                        :style (format "fill:%s"
+                                                                                       colour)}])]
+                                                          triangle-id)
+                                  triangle-tiles (->> (for [triangle-count (range 5)]
+                                                        (utils/veccat
+                                                          [:svg {:width tile-wh
+                                                                 :height tile-wh}
+                                                           [:defs {} triangle-def]]
+                                                          (for [rotation (->> (range 0 360 90)
+                                                                              (take triangle-count))]
+                                                            (svg/use triangle-id
+                                                                     {:transform (format "rotate(%s %s %s)"
+                                                                                         rotation
+                                                                                         tile-center
+                                                                                         tile-center)}))))
+                                                      reverse
+                                                      vec)
+                                  triangle-weights (fn [percentage]
+                                                     (let [distances (map #(Math/abs (float (- percentage %)))
+                                                                          (range 0 1 (/ (count triangle-tiles))))
+                                                           skew-for-closest (->> distances
+                                                                                 (map (partial - 1))
+                                                                                 (map (fn [x]
+                                                                                        (* x
+                                                                                           (Math/pow 2
+                                                                                                     (* 5 x))))))
+                                                           normalize-by (apply + skew-for-closest)
+                                                           weights (map #(/ % normalize-by)
+                                                                        skew-for-closest)]
+                                                       weights))
+                                  triangle--percentage->idx-fn (memoize
+                                                                 (fn [percentage]
+                                                                   (transform/bin-idx (triangle-weights percentage))))]
+                              (tile-grid-gen
+                                (fn [percentage]
+                                  (triangle-tiles ((triangle--percentage->idx-fn percentage)
+                                                    (rand)))))))
+        star-tile-gen (fn [colour]
+                        (let [star-tile-empty [:svg {:width tile-wh
+                                                     :height tile-wh}
+                                               [:defs {}]
+                                               [:line {:x2 tile-center
+                                                       :y2 0
+                                                       :x1 tile-center
+                                                       :y1 tile-wh
+                                                       :stroke-width tile-padding
+                                                       :stroke colour}]
+                                               [:line {:x2 0
+                                                       :y2 tile-center
+                                                       :x1 tile-wh
+                                                       :y1 tile-center
+                                                       :stroke-width tile-padding
+                                                       :stroke colour}]]
+                              star-tile-filled (let [h0v0 (- tile-center half-tile-padding)
+                                                     h1v1 (+ tile-center half-tile-padding)
+                                                     Q (fn [& args]
+                                                         (format "Q %s"
+                                                                 (str/join " " (flatten args))))
+                                                     m (fn [h-or-v & [direction]]
+                                                         (format "%s %s"
+                                                                 (name h-or-v)
+                                                                 ((or direction identity)
+                                                                   tile-padding)))
+                                                     svg [:svg {:width tile-wh
+                                                                :height tile-wh}
+                                                          [:defs {}]
+                                                          [:path {:fill colour
+                                                                  :d (format "M 0 %s %s"
+                                                                             h0v0
+                                                                             (str/join " " [(Q [h0v0 h0v0] [h0v0 0])
+                                                                                            (m :h)
+                                                                                            (Q [h1v1 h0v0] [tile-wh h0v0])
+                                                                                            (m :v)
+                                                                                            (Q [h1v1 h1v1] [h1v1 tile-wh])
+                                                                                            (m :h -)
+                                                                                            (Q [h0v0 h1v1] [0 h1v1])]))}]]]
+                                                 ;;    | c |
+                                                 ;;   v0 e v1
+                                                 ;;    | n |
+                                                 ;;h0 - -t- - - ->
+                                                 ;; c-e-n-t-e-r- ->
+                                                 ;;h1 - -e- - - ->
+                                                 ;;    | r |
+                                                 ;;    v   v
+                                                 svg)]
+                          (tile-grid-gen
+                            (fn [percentage]
+                              (if (> percentage (rand))
+                                star-tile-empty
+                                star-tile-filled)))))
+        hatch-line-count 1000
+        order-of-panels [tile-gen
+                         (partial vert-hatch-gradient hatch-line-count)
+                         triangle-tile-gen
+                         (partial cross-hatch-gradient hatch-line-count)
+                         star-tile-gen
+                         control-tile-gen]
+        gen-fn (fn [idx_1_based year month day src-gens colours]
+                 (render [year month day]
+                         (let [ids (repeatedly (count src-gens)
+                                               gensym)]
+                           (utils/veccat
+                             [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                    :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                              (utils/veccat
+                                [:defs {}]
+                                (for [[id src-gen colour] (map list
+                                                               ids
+                                                               src-gens
+                                                               colours)]
+                                  (svg/->def (with-padding
+                                               (src-gen colour)) id)))
+                              [:rect {:fill background-colour
+                                      :x 0 :y 0
+                                      :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                      :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
+                             (for [[y id] (map list
+                                               (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (count src-gens)))
+                                               ids)]
+                               (svg/use id {:x 0 :y y}))))
+                         "Gradients."))
+        seqs (map list
+                  (indexed-days-of-week (week->date 2019 3))
+                  (concat [order-of-panels]
+                          (for [src-gen order-of-panels]
+                            (repeat 6 src-gen)))
+                  [["rgb(102,255,204)" "rgb(77,255,225)" "rgb(51,255,221)"
+                    "rgb(25,255,217)" "rgb(0,255,213)" "rgb(0,230,191)"]
+                   ["rgb(255,255,77)" "rgb(255,221,51)" "rgb(255,217,25)"
+                    "rgb(255,213,0)" "rgb(230,191,0)" "rgb(230,170,0)"]
+                   ["rgb(255,77,106)" "rgb(255,51,85)" "rgb(255,25,64)"
+                    "rgb(255,0,43)" "rgb(230,0,38)" "rgb(204,0,34)"]
+                   ["rgb(229,102,255)" "rgb(196,77,255)" "rgb(153,51,255)"
+                    "rgb(102,25,255)" "rgb(43,0,255)" "rgb(0,0,230)"]
+                   ["rgb(166,255,77)" "rgb(119,255,51)" "rgb(64,255,25)"
+                    "rgb(0,255,0)" "rgb(43,0,255)" "rgb(0,230,38)"]
+                   ["rgb(231,227,208)"
+                    "rgb(35,115,62)"
+                    "rgb(159,14,17)"
+                    "rgb(247,205,38)"
+                    "rgb(32,42,54)"
+                    "rgb(231,227,208)"]
+                   ["#1DACE8"
+                    "#1C366B"
+                    "#F24D29"
+                    "#E5C4A1"
+                    "#C4CFD0"
+                    "#F8DF4F"]])]
+    (doseq [[[idx_1_based year month day]
+             src-gens
+             colours]
+            seqs]
+      (gen-fn idx_1_based year month day src-gens colours))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -921,4 +1263,5 @@
   (trace/profile {} (instagram-2018-52))
   (trace/profile {} (instagram-2019-0))
   (trace/profile {} (instagram-2019-1))
-  (trace/profile {} (instagram-2019-2)))
+  (trace/profile {} (instagram-2019-2))
+  (trace/profile {} (instagram-2019-3)))
