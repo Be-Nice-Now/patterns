@@ -1214,23 +1214,38 @@
                                                (range 0 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT (count src-gens)))
                                                ids)]
                                (svg/use id {:x 0 :y y}))))
-                         "Gradients."))]
+                         "Gradients."))
+        seqs (map list
+                  (indexed-days-of-week (week->date 2019 3))
+                  (concat [order-of-panels]
+                          (for [src-gen order-of-panels]
+                            (repeat 6 src-gen)))
+                  [["rgb(102,255,204)" "rgb(77,255,225)" "rgb(51,255,221)"
+                    "rgb(25,255,217)" "rgb(0,255,213)" "rgb(0,230,191)"]
+                   ["rgb(255,255,77)" "rgb(255,221,51)" "rgb(255,217,25)"
+                    "rgb(255,213,0)" "rgb(230,191,0)" "rgb(230,170,0)"]
+                   ["rgb(255,77,106)" "rgb(255,51,85)" "rgb(255,25,64)"
+                    "rgb(255,0,43)" "rgb(230,0,38)" "rgb(204,0,34)"]
+                   ["rgb(229,102,255)" "rgb(196,77,255)" "rgb(153,51,255)"
+                    "rgb(102,25,255)" "rgb(43,0,255)" "rgb(0,0,230)"]
+                   ["rgb(166,255,77)" "rgb(119,255,51)" "rgb(64,255,25)"
+                    "rgb(0,255,0)" "rgb(43,0,255)" "rgb(0,230,38)"]
+                   ["rgb(231,227,208)"
+                    "rgb(35,115,62)"
+                    "rgb(159,14,17)"
+                    "rgb(247,205,38)"
+                    "rgb(32,42,54)"
+                    "rgb(231,227,208)"]
+                   ["#1DACE8"
+                    "#1C366B"
+                    "#F24D29"
+                    "#E5C4A1"
+                    "#C4CFD0"
+                    "#F8DF4F"]])]
     (doseq [[[idx_1_based year month day]
              src-gens
              colours]
-            (map list
-                 (indexed-days-of-week (week->date 2019 3))
-                 (concat [order-of-panels]
-                         (for [src-gen order-of-panels]
-                           (repeat 6 src-gen)))
-                 [["rgb(102,255,204)" "rgb(77,255,225)" "rgb(51,255,221)"
-                   "rgb(25,255,217)" "rgb(0,255,213)" "rgb(0,230,191)"]
-                  []
-                  []
-                  []
-                  []
-                  []
-                  []])]
+            seqs]
       (gen-fn idx_1_based year month day src-gens colours))))
 
 (comment
