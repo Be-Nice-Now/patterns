@@ -7,6 +7,7 @@
             [patterns.core :as patterns]
             [patterns.pipes :as pipes]
             [patterns.utils.paths :as utils.paths]
+            [patterns.utils.svg.polygon :as polygon]
             [patterns.utils.svg :as svg]
             [clojure.string :as str]
             [patterns.shatter :as shatter]))
@@ -69,17 +70,8 @@
                                b (- max-radius (* tile-width m))
                                radius (+ (* m points)
                                          b)]
-                           [:polygon {:points (->> (range 0
-                                                          (* 2 Math/PI)
-                                                          (/ (* 2 Math/PI) points))
-                                                   (take points)
-                                                   (map (fn [radians]
-                                                          (format "%s,%s"
-                                                                  (int (* radius
-                                                                          (Math/cos (double radians))))
-                                                                  (int (* radius
-                                                                          (Math/sin (double radians)))))))
-                                                   (str/join " "))}])))
+                           (polygon/equilateral
+                             points radius))))
         shapes-swatches (map (fn [[tag attrs]]
                                [:svg
                                 {:height swatch-dimension
