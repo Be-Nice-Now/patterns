@@ -79,6 +79,17 @@
       angle
       n)))
 
+(defn spiral
+  [src n step]
+  (let [round-to 10000
+        angle (/ (Math/floor (* round-to (/ 360 step)))
+                 round-to)]
+    (applesauce src
+                angle
+                n
+                (fn [x]
+                  (/ x step)))))
+
 (comment
   (def src (shatter/dark
              [:svg {:width 500 :height 500}

@@ -908,8 +908,7 @@
 
 (defn instagram-2019-3
   []
-  (let [line-gradient-colour "darkslategray"
-        background-colour "rgb(250,250,250)"
+  (let [background-colour "rgb(250,250,250)"
         padding (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                    120)
         gradient-panel--height (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -1248,6 +1247,75 @@
             seqs]
       (gen-fn idx_1_based year month day src-gens colours))))
 
+(defn instagram-2019-4
+  []
+  (let [line-gradient-colour "darkslategray"
+        background-colour "rgb(250,250,250)"
+        swatch-dim (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                           3))
+        radius (float (/ swatch-dim
+                         10))
+        cross-hatch-points (fn [n width]
+                             (->> (repeatedly n rand)
+                                  (map (fn [seed]
+                                         ; Quarter of a Circle
+                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
+                                         (* width
+                                            (inc (- (Math/sqrt
+                                                      (- 1 (* seed seed))))))))
+                                  (map #(Math/round %))))
+        vert-hatches (fn [n stroke]
+                       (let [points (cross-hatch-points n (* 2 radius))
+                             line-fn (fn [point]
+                                       [:line {:x1 point :y1 0
+                                               :x2 point :y2 (* 2 radius)
+                                               :stroke-width 1
+                                               :stroke stroke}])]
+                         (mapv line-fn points)))
+        center (fn [{:keys [width height] :as dims} src]
+                 (let [{w :width
+                        h :height} (svg/dimensions src)
+                       gap-width (float (/ (- width w)
+                                           2))
+                       gap-height (float (/ (- height h)
+                                            2))
+                       id (gensym "center")]
+                   [:svg dims
+                    [:defs {}
+                     (svg/->def src id)]
+                    (svg/use id {:x gap-width :y gap-height})]))
+        gen-fn (fn [idx_1_based year month day]
+                 (let [shape (shatter/dark
+                               [:svg {:width (* 2 radius)
+                                      :height (* 2 radius)}
+                                [:defs {}
+                                 [:clipPath {:id "c"}
+                                  (polygon/equilateral
+                                    (dec day)
+                                    radius)]]
+                                (utils/veccat
+                                  [:g {:clip-path "url(#c)"}]
+                                  (vert-hatches 100
+                                                "black"))]
+                               1)]
+                   (render [year month day]
+                           (tile/grid
+                             (->> (concat [shape]
+                                          (for [i (range 0 idx_1_based)]
+                                            (layer/spiral
+                                              shape
+                                              (+ 4 i)
+                                              (+ 4 i))))
+                                  (map (partial center
+                                                {:width swatch-dim
+                                                 :height swatch-dim})))
+
+                             (inc idx_1_based)
+                             (inc idx_1_based))
+                           "Gradients.")))]
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 4))]
+      (gen-fn idx_1_based year month day))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -1264,4 +1332,5 @@
   (trace/profile {} (instagram-2019-0))
   (trace/profile {} (instagram-2019-1))
   (trace/profile {} (instagram-2019-2))
-  (trace/profile {} (instagram-2019-3)))
+  (trace/profile {} (instagram-2019-3))
+  (trace/profile {} (instagram-2019-4)))
