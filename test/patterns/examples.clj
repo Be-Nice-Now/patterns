@@ -73,6 +73,13 @@
         (log/error e)
         (throw (ex-info "Error" {} e))))))
 
+(def poke-palettes
+  (->> (io/file "./resources/swatches/png/pokemon/")
+       file-seq
+       rest
+       (map (fn [^java.io.File f]
+              (graphs/image->palette f)))))
+
 (defn instagram-2018-47
   []
   (let [gen-fn (fn [idx_1_based year month day]
