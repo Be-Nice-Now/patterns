@@ -1350,7 +1350,11 @@
                     (svg/use id {:x gap-width :y gap-height})]))
         polygon--edges--k-min 1
         polygon--edges--k-max 3
-        gen-fn (fn [idx_1_based year month day]
+        gen-fn (fn [idx_1_based year month day
+                    [colour--background
+                     colour--shape-fill
+                     colour--circle-stroke
+                     colour--shape-stroke]]
                  (let [polygon--k (+ polygon--edges--k-min
                                      (mod day (inc (- polygon--edges--k-max
                                                       polygon--edges--k-min))))
@@ -1372,10 +1376,10 @@
                                                    0
                                                    180))))
                        shape-stroke-width 1
-                       style #(format "fill:%s;stroke:%s;stroke-width:%s"
-                                     background-colour
-                                     line-gradient-colour
-                                     %)
+                       shape-style (format "fill:%s;stroke:%s;stroke-width:%s"
+                                           colour--shape-fill
+                                           colour--shape-stroke
+                                           shape-stroke-width)
                        shapes (->> (range swatch-dim
                                           0
                                           (int (/ (- swatch-dim)
@@ -1391,7 +1395,7 @@
                                              (- (float (/ dim
                                                           2))
                                                 shape-stroke-width)
-                                             {:style (style shape-stroke-width)})]))
+                                             {:style shape-style})]))
                                    reverse
                                    (map (partial center {:width swatch-dim
                                                          :height swatch-dim}))
@@ -1413,16 +1417,45 @@
                                           day
                                           {:transform-fn alternate-rotate-fn})
                                         "tiles")]
+                            [:rect {:fill colour--background
+                                    :x 0 :y 0
+                                    :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                    :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
                             (svg/use "tiles" {})
                             [:circle {:cx (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                              2)
                                       :cy (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                              2) :r
                                       circle-radius
-                                      :style (style 10)}]]
-                           "something clever.")))]
-    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 5))]
-      (gen-fn idx_1_based year month day))))
+                                      :style (format "fill:%s;stroke:%s;stroke-width:%s"
+                                                     colour--background
+                                                     colour--circle-stroke
+                                                     10)}]]
+                           (format (str "%s by %s tiles for the day of the month."
+                                        " The circle in the center has a border of tiles"
+                                        " which relates to the number of edges in the polygons"
+                                        " in the tiles."
+                                        "\n.\n.\n"
+                                        "Each tile has %s polygon(s) in it, nested, to represent"
+                                        " the day of the week."
+                                        "\n.\n.\n"
+                                        "Colours are lifted from pop culture comics.")
+                                   day day
+                                   idx_1_based))))
+        colours (->> poke-palettes
+                     (shuffle)
+                     (take 7)
+                     (map (comp (partial take 4) rest))
+                     (map (fn [xs]
+                            (map (fn [[_ {:keys [r g b]} _]]
+                                   (format "rgb(%s,%s,%s)"
+                                           r g b))
+                                 xs))))]
+    (doseq [[[idx_1_based year month day] colours]
+            (map list
+                 (indexed-days-of-week (week->date 2019 5))
+                 colours)]
+      (gen-fn idx_1_based year month day colours))))
 
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
