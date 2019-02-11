@@ -1314,6 +1314,109 @@
     (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 4))]
       (gen-fn idx_1_based year month day))))
 
+(defn instagram-2019-5
+  []
+  ;; colours
+  ;;; poke pallette style colours
+  ;; tiles day of month
+  ;x;; even days: rows flip
+  ;x;; odd days: columns flip
+  ;;; contents:
+  ;x;; triangle, square, pentagon, ...
+  ;;;; shelled idx day of week
+  ;;;; rotated slightly
+  ;x; circle in the middle
+  ;x;; width/height == # (of nodes in shape) row/column of tiles away from width/height
+  (let [line-gradient-colour "darkslategray"
+        background-colour "rgb(250,250,250)"
+        center (fn [{:keys [width height] :as dims} src]
+                 (let [{w :width
+                        h :height} (svg/dimensions src)
+                       gap-width (float (/ (- width w)
+                                           2))
+                       gap-height (float (/ (- height h)
+                                            2))
+                       id (gensym "center")]
+                   [:svg dims
+                    [:defs {}
+                     (svg/->def src id)]
+                    (svg/use id {:x gap-width :y gap-height})]))
+        polygon--edges--k-min 1
+        polygon--edges--k-max 3
+        gen-fn (fn [idx_1_based year month day]
+                 (let [polygon--k (+ polygon--edges--k-min
+                                     (mod day (inc (- polygon--edges--k-max
+                                                      polygon--edges--k-min))))
+                       polygon-edges (inc (* 2 polygon--k))
+                       swatch-dim (-> (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                         day)
+                                      float
+                                      Math/round
+                                      int)
+                       alternate-rotate-fn (partial
+                                             tile/transform-rotate
+                                             (if (even? day)
+                                               (fn [_src [x _y] _el]
+                                                 (if (even? x)
+                                                   0
+                                                   180))
+                                               (fn [_src [_x y] _el]
+                                                 (if (even? y)
+                                                   0
+                                                   180))))
+                       shape-stroke-width 1
+                       style #(format "fill:%s;stroke:%s;stroke-width:%s"
+                                     background-colour
+                                     line-gradient-colour
+                                     %)
+                       shapes (->> (range swatch-dim
+                                          0
+                                          (int (/ (- swatch-dim)
+                                                  (inc idx_1_based))))
+                                   reverse
+                                   rest
+                                   (map (fn [dim]
+                                          [:svg {:width dim
+                                                 :height dim}
+                                           [:defs {}]
+                                           (polygon/equilateral
+                                             polygon-edges
+                                             (- (float (/ dim
+                                                          2))
+                                                shape-stroke-width)
+                                             {:style (style shape-stroke-width)})]))
+                                   reverse
+                                   (map (partial center {:width swatch-dim
+                                                         :height swatch-dim}))
+                                   (utils/veccat
+                                     [:svg {:width swatch-dim
+                                            :height swatch-dim}
+                                      [:defs {}]]))
+                       circle-radius (float (/ (* swatch-dim
+                                                  (- day
+                                                     (* 2 (inc polygon--k))))
+                                               2))]
+                   (render [year month day]
+                           [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                            [:defs {}
+                             (svg/->def (tile/grid
+                                          [shapes]
+                                          day
+                                          day
+                                          {:transform-fn alternate-rotate-fn})
+                                        "tiles")]
+                            (svg/use "tiles" {})
+                            [:circle {:cx (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                             2)
+                                      :cy (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                             2) :r
+                                      circle-radius
+                                      :style (style 10)}]]
+                           "something clever.")))]
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 5))]
+      (gen-fn idx_1_based year month day))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -1331,4 +1434,5 @@
   (trace/profile {} (instagram-2019-1))
   (trace/profile {} (instagram-2019-2))
   (trace/profile {} (instagram-2019-3))
-  (trace/profile {} (instagram-2019-4)))
+  (trace/profile {} (instagram-2019-4))
+  (trace/profile {} (instagram-2019-5)))
