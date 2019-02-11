@@ -1249,9 +1249,7 @@
 
 (defn instagram-2019-4
   []
-  (let [line-gradient-colour "darkslategray"
-        background-colour "rgb(250,250,250)"
-        swatch-dim (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+  (let [swatch-dim (int (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                            3))
         radius (float (/ swatch-dim
                          10))
