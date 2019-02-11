@@ -195,11 +195,12 @@
     (->> (histogram-png-data filename)
          (sort-by second)
          reverse
-         (map-indexed (fn [idx [argb]]
+         (map-indexed (fn [idx [argb percentage]]
                         [(keyword
                            (str prefix
                                 "-" idx))
-                         argb])))))
+                         argb
+                         percentage])))))
 
 (comment
   {:web-safe-colors (map ink.color/coerce ink.cc/web-safe-colors)
@@ -233,6 +234,14 @@
              groups)
         k k)
       :png))
+  (def poke-palettes
+    (->> (io/file "./resources/swatches/png/pokemon/")
+         file-seq
+         rest
+         (map (fn [^java.io.File f]
+                   (image->palette f)))))
+  (->> poke-palettes (shuffle) (take 7)
+       (map (comp (partial take 5) rest)))
   (patterns/render
     "./poke.k-means"
     (patterns.tile/grid
