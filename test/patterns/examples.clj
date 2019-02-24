@@ -1582,7 +1582,9 @@
                      (svg/->def src id)]
                     (svg/use id {:x gap-width :y gap-height})]))
         gen-fn (fn [idx_1_based year month day]
-                 (let [clip-points (fn []
+                 (let [dominant-colour "black"
+                       background "darkcyan"
+                       clip-points (fn []
                                      (concat [0]
                                              (->> #(rand-int INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
                                                   (repeatedly (dec day))
@@ -1615,7 +1617,11 @@
                                           [:clipPath {:id id}
                                            clip-path])
                                         clip-ids
-                                        clip-polygons))]
+                                        clip-polygons))
+                                 [:rect {:fill background
+                                         :x 0 :y 0
+                                         :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                         :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
                                 (map-indexed (fn [idx id]
                                                (utils/veccat
                                                  [:g {:clip-path (format "url(#%s)"
@@ -1624,8 +1630,13 @@
                                                                  :left-to-right
                                                                  :right-to-left)
                                                                100
-                                                               "black")))
-                                             clip-ids))]
+                                                               dominant-colour)))
+                                             clip-ids)
+                                (map (fn [[tag attrs]]
+                                       [tag (assoc attrs
+                                              :style (format "stroke-width:1;stroke:%s;fill:none;"
+                                                             dominant-colour))])
+                                     clip-polygons))]
                    (render [year month day]
                            swatch
                            #_(tile/grid
