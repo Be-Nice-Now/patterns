@@ -1539,16 +1539,10 @@
 
 (defn instagram-2019-7
   []
-  (let [tile-n-panes (->> (range 10)
-                          (map (partial bit-shift-left 2))
-                          (cons 1)
-                          (map (partial / INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))
-                          (map float)
-                          (map #(Math/round %)))
-        swatch-xn-yn (->> (map (partial / INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
-                               tile-n-panes)
-                          (map #(Math/ceil %))
-                          (map int))
+  (let [steps (min (int (Math/floor (/ (Math/log INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
+                                       (Math/log 2))))
+                   8)
+        stroke-width 2
         cross-hatch-points (fn [direction n]
                              (->> (repeatedly n rand)
                                   (map (fn [seed]
@@ -1566,7 +1560,7 @@
                              line-fn (fn [point]
                                        [:line {:x1 point :y1 0
                                                :x2 point :y2 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                               :stroke-width 1
+                                               :stroke-width stroke-width
                                                :stroke stroke}])]
                          (mapv line-fn points)))
         center (fn [{:keys [width height] :as dims} src]
@@ -1581,9 +1575,33 @@
                     [:defs {}
                      (svg/->def src id)]
                     (svg/use id {:x gap-width :y gap-height})]))
-        gen-fn (fn [idx_1_based year month day]
-                 (let [dominant-colour "black"
-                       background "darkcyan"
+        swatch-scale (fn [pow src]
+                       (let [id (gensym "s")
+                             scale (/ 1
+                                      (Math/pow 2 pow))
+                             dimension (Math/round (* INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                      scale))]
+                         [:svg {:width dimension
+                                :height dimension}
+                          [:defs {}
+                           (svg/->def src id)]
+                          [:g {:transform (format "scale(%s)"
+                                                  scale)}
+                           (svg/use id {})]]))
+        pow-tiles (fn [pow src]
+                    (let [tile-xn-yn (int (Math/pow 2 pow))]
+                      (center {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                               :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                              (tile/grid
+                                [(swatch-scale pow src)]
+                                tile-xn-yn
+                                tile-xn-yn))))
+        gen-fn (fn [idx_1_based year month day [primary-colour secondary-colour]]
+                 (let [to-rgb (fn [{:keys [r g b]}]
+                                (format "rgb(%s,%s,%s)"
+                                        r g b))
+                       dominant-colour (to-rgb primary-colour)
+                       background-colour (to-rgb secondary-colour)
                        clip-points (fn []
                                      (concat [0]
                                              (->> #(rand-int INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
@@ -1592,8 +1610,8 @@
                                                   sort)
                                              [INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT]))
                        clip-lines (mapv vector
-                                       (clip-points)
-                                       (clip-points))
+                                        (clip-points)
+                                        (clip-points))
                        clip-polygon-fn (fn [[top-y-start top-y-end] [bottom-y-start bottom-y-end]]
                                          [:polygon {:points (->> [[0 top-y-start]
                                                                   [INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT top-y-end]
@@ -1618,7 +1636,7 @@
                                            clip-path])
                                         clip-ids
                                         clip-polygons))
-                                 [:rect {:fill background
+                                 [:rect {:fill background-colour
                                          :x 0 :y 0
                                          :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                          :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
@@ -1629,23 +1647,30 @@
                                                  (vert-hatches (if (even? idx)
                                                                  :left-to-right
                                                                  :right-to-left)
-                                                               100
+                                                               200
                                                                dominant-colour)))
                                              clip-ids)
                                 (map (fn [[tag attrs]]
                                        [tag (assoc attrs
-                                              :style (format "stroke-width:1;stroke:%s;fill:none;"
+                                              :style (format "stroke-width:%s;stroke:%s;fill:none;"
+                                                             stroke-width
                                                              dominant-colour))])
                                      clip-polygons))]
-                   (render [year month day]
-                           swatch
-                           #_(tile/grid
-                             [swatch]
-                             (inc idx_1_based)
-                             (inc idx_1_based))
-                           "Gradients.")))]
-    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 7))]
-      (gen-fn idx_1_based year month day))))
+                   (doseq [i (range steps)]
+                     (render [year month day i]
+                             (pow-tiles i swatch)
+                             "A study on exponents."))))
+        colours (->> poke-palettes
+                     (shuffle)
+                     (take 7)
+                     (map (fn [xs]
+                            (map second
+                                 xs))))]
+    (doseq [[[idx_1_based year month day] palette]
+            (map list
+                 (indexed-days-of-week (week->date 2019 7))
+                 colours)]
+      (gen-fn idx_1_based year month day palette))))
 
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
