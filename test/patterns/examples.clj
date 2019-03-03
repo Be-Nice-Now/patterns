@@ -57,11 +57,9 @@
              (time/iterate time/plus (time/local-date year month day) (time/days 1)))))
 
 (defn render
-  [[year month day] src description]
-  (let [filename (format "./doc/%s-%s-%s"
-                         year
-                         month
-                         day)]
+  [year-month-day-xs src description]
+  (let [filename (str "./doc/"
+                      (str/join "-" year-month-day-xs))]
     (try
       (log/info description)
       (patterns/render
@@ -1323,20 +1321,7 @@
 
 (defn instagram-2019-5
   []
-  ;; colours
-  ;;; poke pallette style colours
-  ;; tiles day of month
-  ;x;; even days: rows flip
-  ;x;; odd days: columns flip
-  ;;; contents:
-  ;x;; triangle, square, pentagon, ...
-  ;;;; shelled idx day of week
-  ;;;; rotated slightly
-  ;x; circle in the middle
-  ;x;; width/height == # (of nodes in shape) row/column of tiles away from width/height
-  (let [line-gradient-colour "darkslategray"
-        background-colour "rgb(250,250,250)"
-        center (fn [{:keys [width height] :as dims} src]
+  (let [center (fn [{:keys [width height] :as dims} src]
                  (let [{w :width
                         h :height} (svg/dimensions src)
                        gap-width (float (/ (- width w)
@@ -1457,6 +1442,236 @@
                  colours)]
       (gen-fn idx_1_based year month day colours))))
 
+(defn instagram-2019-6
+  []
+  ;; colours
+  ;; max(tiles day of month, 20[19]) + mod(max(day, 20)) [ie, max then divisible by 4]
+  ;;; contents:
+  ;;; pipes
+  ;;;; multi stroke based on colour palette
+  ;;;; multi stroke based on reversed colour palette
+  (let [pipes-swatches (fn [dim [background & colours]]
+                         (let [grid-size (-> (/ dim
+                                                2)
+                                             float
+                                             Math/round)
+                               {:keys [style path-fn]} (svg/multi-stroke
+                                                         (map-indexed (fn [idx colour]
+                                                                        (let [line-width (int (* (inc idx)
+                                                                                                 (/ grid-size
+                                                                                                    (count colours))))]
+                                                                          {:width line-width
+                                                                           :colour colour}))
+                                                                      colours))]
+                           (for [swatch (pipes/swatches
+                                          1 1
+                                          {:line-fn (fn [& args]
+                                                      (path-fn (apply svg/quadratic args)))
+                                           :style style
+                                           :grid-size grid-size})]
+                             (let [id (gensym "p")
+                                   wd (:height (svg/dimensions swatch))]
+                               [:svg {:width wd
+                                      :height wd}
+                                [:defs {}
+                                 (svg/->def swatch id)]
+                                [:rect {:x 0 :y 0
+                                        :height wd
+                                        :width wd
+                                        :style (format "fill:rgb(%s,%s,%s);"
+                                                       (:r background)
+                                                       (:g background)
+                                                       (:b background))}]
+                                (svg/use id {})]))))
+        tiles-row (fn [filled-swatches empty-swatches fill-n row-n]
+                    (assert (> row-n fill-n))
+                    (let [filled-swatches (cycle filled-swatches)
+                          empty-swatches (cycle empty-swatches)]
+                      (concat
+                        (map (partial nth filled-swatches)
+                             (range fill-n))
+                        (map (partial nth empty-swatches)
+                             (range (- row-n
+                                       fill-n))))))
+        gen-fn (fn [idx_1_based year month day
+                    palette]
+                 (let [tiles-n (+ (max day 20)
+                                  (- 4
+                                     (mod (max day 20) 4)))
+                       swatch-dim (-> (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                         tiles-n)
+                                      float
+                                      Math/round)
+                       filled-swatches (pipes-swatches swatch-dim palette)
+                       empty-swatches (pipes-swatches swatch-dim (reverse palette))
+                       tiles-row (partial tiles-row filled-swatches empty-swatches)]
+                   (render [year month day]
+                           (tile/grid
+                             (concat
+                               (tiles-row 20 tiles-n)
+                               (tiles-row 19 tiles-n)
+                               (tiles-row month tiles-n)
+                               (tiles-row day tiles-n))
+                             tiles-n tiles-n
+                             {:transform-fn tile/transform-rotate})
+                           (format (str "%s by %s tiles for the day of the month."
+                                        " The circle in the center has a border of tiles"
+                                        " which relates to the number of edges in the polygons"
+                                        " in the tiles."
+                                        "\n.\n.\n"
+                                        "Each tile has %s polygon(s) in it, nested, to represent"
+                                        " the day of the week."
+                                        "\n.\n.\n"
+                                        "Colours are lifted from pop culture comics.")
+                                   day day
+                                   idx_1_based))))
+        colours (->> poke-palettes
+                     (shuffle)
+                     (take 7)
+                     (map (fn [xs]
+                            (map second
+                                 xs))))]
+    (doseq [[[idx_1_based year month day] colours]
+            (map list
+                 (indexed-days-of-week (week->date 2019 6))
+                 colours)]
+      (gen-fn idx_1_based year month day colours))))
+
+(defn instagram-2019-7
+  []
+  (let [steps (min (int (Math/floor (/ (Math/log INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
+                                       (Math/log 2))))
+                   8)
+        stroke-width 2
+        cross-hatch-points (fn [direction n]
+                             (->> (repeatedly n rand)
+                                  (map (fn [seed]
+                                         ; Quarter of a Circle
+                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
+                                         (let [x-squared (Math/sqrt
+                                                           (- 1 (* seed seed)))]
+                                           (* INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                              (if (= :left-to-right direction)
+                                                (inc (- x-squared))
+                                                x-squared)))))
+                                  (map #(Math/round %))))
+        vert-hatches (fn [direction n stroke]
+                       (let [points (cross-hatch-points direction n)
+                             line-fn (fn [point]
+                                       [:line {:x1 point :y1 0
+                                               :x2 point :y2 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                               :stroke-width stroke-width
+                                               :stroke stroke}])]
+                         (mapv line-fn points)))
+        center (fn [{:keys [width height] :as dims} src]
+                 (let [{w :width
+                        h :height} (svg/dimensions src)
+                       gap-width (float (/ (- width w)
+                                           2))
+                       gap-height (float (/ (- height h)
+                                            2))
+                       id (gensym "center")]
+                   [:svg dims
+                    [:defs {}
+                     (svg/->def src id)]
+                    (svg/use id {:x gap-width :y gap-height})]))
+        swatch-scale (fn [pow src]
+                       (let [id (gensym "s")
+                             scale (/ 1
+                                      (Math/pow 2 pow))
+                             dimension (Math/round (* INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                      scale))]
+                         [:svg {:width dimension
+                                :height dimension}
+                          [:defs {}
+                           (svg/->def src id)]
+                          [:g {:transform (format "scale(%s)"
+                                                  scale)}
+                           (svg/use id {})]]))
+        pow-tiles (fn [pow src]
+                    (let [tile-xn-yn (int (Math/pow 2 pow))]
+                      (center {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                               :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                              (tile/grid
+                                [(swatch-scale pow src)]
+                                tile-xn-yn
+                                tile-xn-yn))))
+        gen-fn (fn [idx_1_based year month day [primary-colour secondary-colour]]
+                 (let [to-rgb (fn [{:keys [r g b]}]
+                                (format "rgb(%s,%s,%s)"
+                                        r g b))
+                       dominant-colour (to-rgb primary-colour)
+                       background-colour (to-rgb secondary-colour)
+                       clip-points (fn []
+                                     (concat [0]
+                                             (->> #(rand-int INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
+                                                  (repeatedly (dec day))
+                                                  (map inc)
+                                                  sort)
+                                             [INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT]))
+                       clip-lines (mapv vector
+                                        (clip-points)
+                                        (clip-points))
+                       clip-polygon-fn (fn [[top-y-start top-y-end] [bottom-y-start bottom-y-end]]
+                                         [:polygon {:points (->> [[0 top-y-start]
+                                                                  [INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT top-y-end]
+                                                                  [INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT bottom-y-end]
+                                                                  [0 bottom-y-start]]
+                                                                 (map (fn [[x y]]
+                                                                        (format "%s,%s"
+                                                                                x y)))
+                                                                 (str/join " "))}])
+                       clip-polygons (mapv clip-polygon-fn
+                                           clip-lines
+                                           (rest clip-lines))
+                       clip-ids (repeatedly day
+                                            (comp str gensym (constantly "c")))
+                       swatch (utils/veccat
+                                [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                       :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                 (utils/veccat
+                                   [:defs {}]
+                                   (map (fn [id clip-path]
+                                          [:clipPath {:id id}
+                                           clip-path])
+                                        clip-ids
+                                        clip-polygons))
+                                 [:rect {:fill background-colour
+                                         :x 0 :y 0
+                                         :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                         :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
+                                (map-indexed (fn [idx id]
+                                               (utils/veccat
+                                                 [:g {:clip-path (format "url(#%s)"
+                                                                         id)}]
+                                                 (vert-hatches (if (even? idx)
+                                                                 :left-to-right
+                                                                 :right-to-left)
+                                                               200
+                                                               dominant-colour)))
+                                             clip-ids)
+                                (map (fn [[tag attrs]]
+                                       [tag (assoc attrs
+                                              :style (format "stroke-width:%s;stroke:%s;fill:none;"
+                                                             stroke-width
+                                                             dominant-colour))])
+                                     clip-polygons))]
+                   (doseq [i (range steps)]
+                     (render [year month day i]
+                             (pow-tiles i swatch)
+                             "A study on exponents."))))
+        colours (->> poke-palettes
+                     (shuffle)
+                     (take 7)
+                     (map (fn [xs]
+                            (map second
+                                 xs))))]
+    (doseq [[[idx_1_based year month day] palette]
+            (map list
+                 (indexed-days-of-week (week->date 2019 7))
+                 colours)]
+      (gen-fn idx_1_based year month day palette))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -1475,4 +1690,6 @@
   (trace/profile {} (instagram-2019-2))
   (trace/profile {} (instagram-2019-3))
   (trace/profile {} (instagram-2019-4))
-  (trace/profile {} (instagram-2019-5)))
+  (trace/profile {} (instagram-2019-5))
+  (trace/profile {} (instagram-2019-6))
+  (trace/profile {} (instagram-2019-7)))
