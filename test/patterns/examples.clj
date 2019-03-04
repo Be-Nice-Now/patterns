@@ -20,9 +20,11 @@
             [taoensso.timbre :as log]
             [taoensso.tufte :as trace]
             [patterns.utils.log :as u.log]
-            [patterns.layering :as layer])
+            [patterns.layering :as layer]
+            [patterns.utils.svg.filter :as svg.filter])
   (:import [java.time LocalDate]
-           [java.awt Color]))
+           [java.awt Color]
+           [java.io File]))
 
 (def INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 1080)
 
@@ -1672,6 +1674,178 @@
                  colours)]
       (gen-fn idx_1_based year month day palette))))
 
+(defn center
+  [{:keys [width height] :as dims} src]
+  (let [{w :width
+         h :height} (svg/dimensions src)
+        gap-width (float (/ (- width w)
+                            2))
+        gap-height (float (/ (- height h)
+                             2))
+        id (gensym "center")]
+    [:svg dims
+     [:defs {}
+      (svg/->def src id)]
+     (svg/use id {:x gap-width :y gap-height})]))
+
+(defn instagram-2019-8
+  []
+  (let [k 2
+        alphanumerics (utils/veccat (map char (range 65 91))
+                                    (range 10))
+        idx->character (fn [idx]
+                         (let [c (nth alphanumerics idx)]
+                           (if (and (not (number? c))
+                                    (< 0.5 (rand)))
+                             (str/lower-case c)
+                             (str c))))
+        wh (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 10)
+        tile-dims {:width wh
+                   :height wh}
+        blank-tile [:svg tile-dims
+                    [:defs {}]]
+        filled-tile-gen (fn [colour-gen]
+                          (let [{:keys [r g b]} (colour-gen)]
+                            [:svg tile-dims
+                             [:defs {}]
+                             [:rect (assoc tile-dims
+                                      :x 0 :y 0
+                                      :style (format "fill:rgb(%s,%s,%s);"
+                                                     r g b))]]))
+        character-tile-gen (fn [colour-gen character]
+                             (let [{:keys [r g b]} (colour-gen)
+                                   character-id (gensym "c")
+                                   mask-id (gensym "m")
+                                   filter-id (gensym "f")]
+                               [:svg tile-dims
+                                [:defs {}
+                                 ;;(svg/->def src id)
+                                 [:text {:id character-id
+                                         :x 50 :y 50
+                                         :style "font: bold 50px serif"}
+                                  character]
+                                 [:filter {:id filter-id
+                                           :x 0 :y 0
+                                           :width "100%" :height "100%"}
+                                  [:feImage {:result (str "i" filter-id)
+                                             :xlink:href (str "#" character-id)}]
+                                  (svg.filter/matrix (gensym "f")
+                                                     (str "i" filter-id)
+                                                     [[0 0 0 0 255]
+                                                      [0 0 0 0 255]
+                                                      [0 0 0 0 255]
+                                                      [0 0 0 1 0]])]
+                                 [:mask {:id mask-id}
+                                  [:rect (assoc tile-dims
+                                           :fill "black")]
+                                  [:rect (assoc tile-dims
+                                           :style (format "filter:url(#%s);"
+                                                          filter-id))]]]
+                                [:rect (assoc tile-dims
+                                         :x 0 :y 0
+                                         :fill (format "rgb(%s,%s,%s)"
+                                                       r g b)
+                                         :mask (format "url(#%s)"
+                                                       mask-id))]]))
+        number-tile-seq-gen (fn [palette places n]
+                              (let [characters (map str (str n))
+                                    places-to-pad (max 0
+                                                       (- places
+                                                          (count characters)))
+                                    padding (repeat places-to-pad
+                                                    "0")]
+                                (map (partial character-tile-gen palette)
+                                     (concat padding
+                                             characters))))
+        path->svg (fn [path {:keys [height width]}]
+                    [:svg {:width width :height height}
+                     [:defs {}]
+                     [:image {:xlink:href path
+                              :width width
+                              :height height
+                              :x 0 :y 0}]])
+        svg-swatches (->> "./doc/2019-8/"
+                          io/file
+                          file-seq
+                          rest
+                          (map #(.getAbsolutePath ^File %))
+                          (map (juxt identity img/load-image))
+                          (map (fn [[path image]]
+                                 (path->svg path
+                                            {:height (img/height image)
+                                             :width (img/width image)})))
+                          (into []))
+        palette-to-colour-gen (fn [palette]
+                                (let [hist-colours (mapv first palette)
+                                      colour-gen-gen (transform/bin-idx (map second palette))]
+                                  (fn []
+                                    (hist-colours (colour-gen-gen (rand))))))
+        pyramid-row-gen (fn [colour-gen idx]
+                          (let [start (/ (* idx (inc idx)) 2)
+                                characters (map idx->character
+                                                (range start (+ (inc start) idx)))
+                                padding (- 10 2 (count characters))]
+                            (concat
+                              (for [c characters]
+                                (character-tile-gen colour-gen c))
+                              [blank-tile blank-tile]
+                              (repeatedly padding (partial filled-tile-gen colour-gen)))))
+        gen-fn (fn [idx_1_based year month day]
+                 (let [svg-swatch (nth svg-swatches (dec idx_1_based))
+                       src (center {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                    :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                   (tile/grid
+                                     [svg-swatch]
+                                     3 3))
+                       raster-svg (path->svg (transform/rasterize src k)
+                                             {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                              :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT})
+                       palette (->> raster-svg
+                                    graphs/histogram-data
+                                    (sort-by second)
+                                    (take-last k))
+                       raster-swatch (graphs/bar-overlay
+                                       raster-svg
+                                       (->> palette
+                                            reverse
+                                            (graphs/bar
+                                              {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                               :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}))
+                                       {:opacity 1.0})
+                       colour-gen (palette-to-colour-gen palette)
+                       n (partial number-tile-seq-gen colour-gen)
+                       id (gensym "i")]
+                   (render [year month day 0]
+                           src
+                           "Tiled src image")
+                   (render [year month day 1]
+                           raster-swatch
+                           "Raster swatch with palette bar graph overlay.")
+                   (render [year month day 2]
+                           [:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                  :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                            [:defs {}
+                             (svg/->def (tile/grid
+                                          (concat
+                                            (n 4 2019)
+                                            [blank-tile]
+                                            (n 2 month)
+                                            [blank-tile]
+                                            (n 2 day)
+                                            (repeat 10 blank-tile)
+                                            (mapcat (partial pyramid-row-gen colour-gen)
+                                                    (range 8)))
+                                          10 10)
+                                        id)]
+                            [:rect {:fill "whitesmoke"
+                                    :x 0 :y 0
+                                    :width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                    :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
+                            (svg/use id {:x 0 :y 0})]
+                           "EMNIST characters.")))]
+    (doseq [[idx_1_based year month day] (take 1 (indexed-days-of-week (week->date 2019 8)))]
+      (gen-fn idx_1_based year month day))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -1692,4 +1866,5 @@
   (trace/profile {} (instagram-2019-4))
   (trace/profile {} (instagram-2019-5))
   (trace/profile {} (instagram-2019-6))
-  (trace/profile {} (instagram-2019-7)))
+  (trace/profile {} (instagram-2019-7))
+  (trace/profile {} (instagram-2019-8)))
