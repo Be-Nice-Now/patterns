@@ -21,7 +21,8 @@
             [taoensso.tufte :as trace]
             [patterns.utils.log :as u.log]
             [patterns.layering :as layer]
-            [patterns.utils.svg.filter :as svg.filter])
+            [patterns.utils.svg.filter :as svg.filter]
+            [patterns.emnist :as emnist])
   (:import [java.time LocalDate]
            [java.awt Color]
            [java.io File]))
@@ -1688,6 +1689,21 @@
       (svg/->def src id)]
      (svg/use id {:x gap-width :y gap-height})]))
 
+(defn path->svg
+  [path]
+  (let [abs-path (-> path
+                     io/file
+                     (.getAbsolutePath))
+        image (img/load-image abs-path)
+        width (img/width image)
+        height (img/height image)]
+    [:svg {:width width :height height}
+     [:defs {}]
+     [:image {:xlink:href path
+              :width width
+              :height height
+              :x 0 :y 0}]]))
+
 (defn instagram-2019-8
   []
   (let [k 2
@@ -1716,14 +1732,14 @@
                              (let [{:keys [r g b]} (colour-gen)
                                    character-id (gensym "c")
                                    mask-id (gensym "m")
-                                   filter-id (gensym "f")]
+                                   filter-id (gensym "f")
+                                   picked-img (emnist/random character)]
                                [:svg tile-dims
                                 [:defs {}
-                                 ;;(svg/->def src id)
-                                 [:text {:id character-id
-                                         :x 50 :y 50
-                                         :style "font: bold 50px serif"}
-                                  character]
+                                 (svg/->def (center tile-dims
+                                                    (path->svg
+                                                      picked-img))
+                                            character-id)
                                  [:filter {:id filter-id
                                            :x 0 :y 0
                                            :width "100%" :height "100%"}
@@ -1757,23 +1773,11 @@
                                 (map (partial character-tile-gen palette)
                                      (concat padding
                                              characters))))
-        path->svg (fn [path {:keys [height width]}]
-                    [:svg {:width width :height height}
-                     [:defs {}]
-                     [:image {:xlink:href path
-                              :width width
-                              :height height
-                              :x 0 :y 0}]])
         svg-swatches (->> "./doc/2019-8/"
                           io/file
                           file-seq
                           rest
-                          (map #(.getAbsolutePath ^File %))
-                          (map (juxt identity img/load-image))
-                          (map (fn [[path image]]
-                                 (path->svg path
-                                            {:height (img/height image)
-                                             :width (img/width image)})))
+                          (map path->svg)
                           (into []))
         palette-to-colour-gen (fn [palette]
                                 (let [hist-colours (mapv first palette)
