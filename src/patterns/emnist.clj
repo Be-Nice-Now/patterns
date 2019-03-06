@@ -4,7 +4,8 @@
             [mikera.image.core :as img]
             [clojure.data.csv :as csv]
             [inkspot.color :as ink.color]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [taoensso.tufte :as trace])
   (:import [java.awt Color]
            [java.io File]))
 
@@ -73,10 +74,12 @@
     (dotimes [i (* WIDTH-HEIGHT WIDTH-HEIGHT)]
       (aset pixels i (emnist-column->pixel (cols i))))
     (img/set-pixels tmp pixels)
-    (img/write tmp
-               file
-               "png"
-               :quality 1.0)))
+    (-> tmp
+        (img/rotate 90)
+        (img/flip :horizontal)
+        (img/write file
+                   "png"
+                   :quality 1.0))))
 
 (defn- fs-cache--character-count!*
   []
@@ -97,7 +100,7 @@
 
 (def ^:private fs-cache--character-count! (memoize fs-cache--character-count!*))
 
-(defn- fs-cache--character-count
+(trace/defnp ^:private fs-cache--character-count
   [character]
   (let [fs-cached-count (->count-file character)]
     (when-not (.exists ^File fs-cached-count)
@@ -108,7 +111,7 @@
 
 (def character-count (memoize fs-cache--character-count))
 
-(defn load-nth-character!*
+(trace/defnp ^:private load-nth-character!*
   [character n]
   (make-parents!)
   (let [fs-cached-image (->image-file character n)]
@@ -121,18 +124,17 @@
             (if (= n-seen-so-far n)
               (image! fs-cached-image columns)
               (recur rows (inc n-seen-so-far)))
-            (recur rows n-seen-so-far))))
-      fs-cached-image)))
+            (recur rows n-seen-so-far)))))
+    fs-cached-image))
 
 (def ^:private load-nth-character! (memoize load-nth-character!*))
 
-(defn random
+(trace/defnp random
   [character]
   (when (pos? (character-count character))
     (load-nth-character! character
                          (rand-int (character-count character)))))
-
-(defn case-insensitive-random
+(trace/defnp case-insensitive-random
   [character]
   (if-let [c (random character)]
     c

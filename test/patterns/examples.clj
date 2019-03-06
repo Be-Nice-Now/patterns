@@ -1691,22 +1691,34 @@
 
 (defn path->svg
   [path]
-  (let [abs-path (-> path
-                     io/file
-                     (.getAbsolutePath))
-        image (img/load-image abs-path)
+  (let [image (img/load-image path)
         width (img/width image)
         height (img/height image)]
     [:svg {:width width :height height}
      [:defs {}]
-     [:image {:xlink:href path
+     [:image {:xlink:href (-> path
+                              io/file
+                              (.getAbsolutePath))
               :width width
               :height height
               :x 0 :y 0}]]))
 
-(defn instagram-2019-8
+(defn scale
+  [{:keys [width height] :as dims} src]
+  (let [id (gensym "s")
+        {w :width
+         h :height} (svg/dimensions src)]
+    [:svg dims
+     [:defs {}
+      (svg/->def src id)]
+     [:g {:transform (format "scale(%s,%s)"
+                             (float (/ width w))
+                             (float (/ height h)))}
+      (svg/use id {})]]))
+
+(defn instagram-2019-9
   []
-  (let [k 2
+  (let [k 10
         alphanumerics (utils/veccat (map char (range 65 91))
                                     (range 10))
         idx->character (fn [idx]
@@ -1718,6 +1730,8 @@
         wh (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 10)
         tile-dims {:width wh
                    :height wh}
+        character-dims {:width (/ wh 2)
+                        :height (/ wh 2)}
         blank-tile [:svg tile-dims
                     [:defs {}]]
         filled-tile-gen (fn [colour-gen]
@@ -1733,12 +1747,13 @@
                                    character-id (gensym "c")
                                    mask-id (gensym "m")
                                    filter-id (gensym "f")
-                                   picked-img (emnist/random character)]
+                                   picked-img (emnist/case-insensitive-random character)]
                                [:svg tile-dims
                                 [:defs {}
                                  (svg/->def (center tile-dims
-                                                    (path->svg
-                                                      picked-img))
+                                                    (scale character-dims
+                                                           (path->svg
+                                                             picked-img)))
                                             character-id)
                                  [:filter {:id filter-id
                                            :x 0 :y 0
@@ -1796,20 +1811,23 @@
                               (repeatedly padding (partial filled-tile-gen colour-gen)))))
         gen-fn (fn [idx_1_based year month day]
                  (let [svg-swatch (nth svg-swatches (dec idx_1_based))
+                       raster-svg-swatch (path->svg (transform/rasterize svg-swatch k))
                        src (center {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
                                    (tile/grid
                                      [svg-swatch]
                                      3 3))
-                       raster-svg (path->svg (transform/rasterize src k)
-                                             {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                              :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT})
-                       palette (->> raster-svg
+                       raster-src (center {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                           :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                          (tile/grid
+                                            [raster-svg-swatch]
+                                            3 3))
+                       palette (->> raster-svg-swatch
                                     graphs/histogram-data
                                     (sort-by second)
                                     (take-last k))
                        raster-swatch (graphs/bar-overlay
-                                       raster-svg
+                                       raster-src
                                        (->> palette
                                             reverse
                                             (graphs/bar
@@ -1847,7 +1865,7 @@
                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
                             (svg/use id {:x 0 :y 0})]
                            "EMNIST characters.")))]
-    (doseq [[idx_1_based year month day] (take 1 (indexed-days-of-week (week->date 2019 8)))]
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 9))]
       (gen-fn idx_1_based year month day))))
 
 (comment
@@ -1871,4 +1889,4 @@
   (trace/profile {} (instagram-2019-5))
   (trace/profile {} (instagram-2019-6))
   (trace/profile {} (instagram-2019-7))
-  (trace/profile {} (instagram-2019-8)))
+  (trace/profile {} (instagram-2019-9)))
