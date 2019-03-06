@@ -7,16 +7,46 @@
             [clojure.string :as str]
             [taoensso.tufte :as trace])
   (:import [java.awt Color]
-           [java.io File]))
+           [java.io File Reader]
+           [java.util.zip ZipEntry ZipFile]))
 
 (set! *warn-on-reflection* true)
 
 (def dataset-path "./emnist/")
 (def WIDTH-HEIGHT 28)
 
+(defn entries
+  [^ZipFile file]
+  (enumeration-seq
+    (.entries file)))
+
+(defn zip-ls
+  [^ZipFile file]
+  (for [e (entries file)]
+    (.getName ^ZipEntry e)))
+
+(defn ^Reader zip-reader
+  [^ZipFile file entry]
+  (->> (entries file)
+       (filter (fn [^ZipEntry e]
+                 (= entry
+                    (.getName e))))
+       first
+       (.getInputStream file)
+       io/reader))
+
+(defn ^ZipFile zip-file
+  [n]
+  (-> n
+      (io/resource)
+      (io/file)
+      (.getAbsolutePath)
+      (ZipFile.)))
+
 (defn- load-labels!
   []
-  (with-open [rdr (io/reader (io/resource "emnist/emnist-balanced-mapping.txt"))]
+  (with-open [f (zip-file "emnist.zip")
+              reader (zip-reader f "emnist-balanced-mapping.txt")]
     (reduce (fn [accum mapping]
               (let [[label ascii-code] (str/split mapping #" ")]
                 (assoc accum
@@ -25,15 +55,13 @@
                             char
                             str))))
             {}
-            (line-seq rdr))))
+            (line-seq reader))))
 
 (def label-data (memoize load-labels!))
 
 (defn- ->character
   [label]
   (str ((label-data) label)))
-
-(sort (vals (label-data)))
 
 (defn- ->folder
   [character]
@@ -57,8 +85,7 @@
 
 (def ^:private make-parents! (memoize make-parents!*))
 
-(defn- emnist-column->pixel
-  ^Integer
+(defn- ^Integer emnist-column->pixel
   [value]
   (.getRGB ^Color
            (ink.color/coerce
@@ -88,7 +115,8 @@
   (doseq [character (vals (label-data))]
     (spit (->count-file character) 0))
   (doseq [[character total-count]
-          (with-open [reader (io/reader (io/resource "emnist/emnist-balanced-test.csv"))]
+          (with-open [f (zip-file "emnist.zip")
+                      reader (zip-reader f "emnist-balanced-test.csv")]
             (reduce (fn [accum [label]]
                       (let [character (->character label)]
                         (if (accum character)
