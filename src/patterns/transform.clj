@@ -30,7 +30,7 @@
 
 (trace/defnp ^:private write
   [{:keys [height width]} colour-gen]
-  (let [swatch-img (img/new-image height width)
+  (let [swatch-img (img/new-image width height)
         pixels (img/get-pixels swatch-img)
         swatch (patterns/tmp-resource)]
     (dotimes [i (* height width)]
