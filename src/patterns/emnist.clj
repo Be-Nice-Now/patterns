@@ -5,48 +5,20 @@
             [clojure.data.csv :as csv]
             [inkspot.color :as ink.color]
             [clojure.string :as str]
-            [taoensso.tufte :as trace])
+            [taoensso.tufte :as trace]
+            [patterns.utils.io.zip :as zip])
   (:import [java.awt Color]
-           [java.io File Reader]
-           [java.util.zip ZipEntry ZipFile]))
+           [java.io File]))
 
 (set! *warn-on-reflection* true)
 
 (def dataset-path "./emnist/")
 (def WIDTH-HEIGHT 28)
 
-(defn entries
-  [^ZipFile file]
-  (enumeration-seq
-    (.entries file)))
-
-(defn zip-ls
-  [^ZipFile file]
-  (for [e (entries file)]
-    (.getName ^ZipEntry e)))
-
-(defn ^Reader zip-reader
-  [^ZipFile file entry]
-  (->> (entries file)
-       (filter (fn [^ZipEntry e]
-                 (= entry
-                    (.getName e))))
-       first
-       (.getInputStream file)
-       io/reader))
-
-(defn ^ZipFile zip-file
-  [n]
-  (-> n
-      (io/resource)
-      (io/file)
-      (.getAbsolutePath)
-      (ZipFile.)))
-
 (defn- load-labels!
   []
-  (with-open [f (zip-file "emnist.zip")
-              reader (zip-reader f "emnist-balanced-mapping.txt")]
+  (with-open [f (zip/resource->file "emnist.zip")
+              reader (zip/reader f "emnist-balanced-mapping.txt")]
     (reduce (fn [accum mapping]
               (let [[label ascii-code] (str/split mapping #" ")]
                 (assoc accum
@@ -115,8 +87,8 @@
   (doseq [character (vals (label-data))]
     (spit (->count-file character) 0))
   (doseq [[character total-count]
-          (with-open [f (zip-file "emnist.zip")
-                      reader (zip-reader f "emnist-balanced-test.csv")]
+          (with-open [f (zip/resource->file "emnist.zip")
+                      reader (zip/reader f "emnist-balanced-test.csv")]
             (reduce (fn [accum [label]]
                       (let [character (->character label)]
                         (if (accum character)
