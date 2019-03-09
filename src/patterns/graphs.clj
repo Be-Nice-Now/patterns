@@ -177,7 +177,8 @@
       (svg/use src-id {:x 0 :y 0})]
      (svg/use bar-graph-id {:x 0 :y 0})]))
 
-(defn histogram-overlay
+#_(defn histogram-overlay
+    "INVALID DOES NOT WORK"
   [src & [{:keys [opacity]
            :or {opacity 0.5}}]]
   (bar-overlay src (histogram src) :opacity opacity))

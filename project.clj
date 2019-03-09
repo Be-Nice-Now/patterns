@@ -4,6 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/data.csv "0.1.4"]
                  [clojure.java-time "0.3.2"]
                  [com.fzakaria/slf4j-timbre "0.3.12"]
                  [com.taoensso/timbre "4.10.0"]
@@ -20,7 +21,8 @@
                  [org.clojure/data.xml "0.2.0-alpha5"]
                  [org.clojure/math.combinatorics "0.1.4"]
                  [rm-hull/clustering "0.2.0"]
-                 [rm-hull/inkspot "0.2.1"]]
+                 [rm-hull/inkspot "0.2.1"]
+                 [thinktopic/cortex "0.9.22"]]
   :main ^:skip-aot patterns.core
   :target-path "target/%s"
   :jvm-opts ["-Xmx2g"]
