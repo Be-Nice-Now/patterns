@@ -1,7 +1,8 @@
 (ns patterns.tile
   (:require [patterns.utils :as utils]
             [patterns.utils.sequences :as utils.seq]
-            [patterns.utils.svg :as svg]))
+            [patterns.utils.svg :as svg]
+            [patterns.utils.svg.polygon :as polygon]))
 
 (defn transform-constant
   ":transform-fn for `grid` which acts like identity."
@@ -120,4 +121,79 @@
                                      :y (* y height)
                                      :width width
                                      :height height})))
+                       picks))))
+
+#_"" "
+- layout takes srcs and a [series of points/fn which generates points from x,y]
+- pub:
+  - grid/rectangle masks things by a rectangle
+  - triangle masks things by a triangle
+- (take n (cycle srcs))
+" ""
+
+(defn triangle
+  [srcs xn yn & [{:keys [transform-fn
+                         pick-fn]
+                  :or {transform-fn transform-constant
+                       pick-fn pick-alternate}}]]
+  (let [clip-id-0 (gensym "tile--triangle--clip")
+        clip-id-1 (gensym "tile--triangle--clip")
+        clip-ids [clip-id-0 clip-id-1]
+        picks (for [x (range 0 xn)
+                    y (range 0 yn)]
+                {:x x
+                 :y y
+                 :src-idx (pick-fn
+                            {:srcs srcs
+                             :xn xn
+                             :yn yn}
+                            [x y])
+                 :clip-id (nth clip-ids
+                               (pick-alternate
+                                 {:srcs clip-ids
+                                  :xn xn
+                                  :yn yn}
+                                 [x y]))})
+        tile-prefix (gensym "tile")
+        defs (->> picks
+                  (map :src-idx)
+                  (into #{})
+                  (map (fn [i]
+                         (let [[tag attrs & body] (nth srcs i)
+                               id (str tile-prefix i)]
+                           (svg/->def (utils/veccat
+                                        [tag (assoc attrs
+                                               :clip-path (format "url(#%s)"
+                                                                  id))]
+                                        body)
+                                      (str tile-prefix i))))))
+        dimensions (map svg/dimensions defs)
+        width (Math/round (float (/ (apply min (map :width dimensions))
+                                    2)))
+        height (apply min (map :height dimensions))]
+    (utils/veccat [:svg
+                   {:width (* (inc xn) width)
+                    :height (* yn height)}
+                   (utils/veccat
+                     [:defs {}
+                      [:clipPath {:id clip-id-0}
+                       (polygon/points->
+                         [[0 height]
+                          [width 0]
+                          [(* 2 width) height]])]
+                      [:clipPath {:id clip-id-1}
+                       (polygon/points->
+                         [[0 0]
+                          [width height]
+                          [(* 2 width) 0]])]]
+                     defs)]
+                  (map (fn [{:keys [x y src-idx clip-id]}]
+                         (transform-fn
+                           (nth srcs src-idx)
+                           [x y]
+                           (svg/use (str tile-prefix src-idx)
+                                    {:x (* x width)
+                                     :y (* y height)
+                                     :clip-path (format "url(#%s)"
+                                                        clip-id)})))
                        picks))))
