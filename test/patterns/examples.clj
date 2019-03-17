@@ -7,9 +7,11 @@
             [patterns.pipes :as pipes]
             [patterns.tile :as tile]
             [patterns.transform :as transform]
+            [patterns.utils.layout.align :as align]
             [patterns.utils.paths :as utils.paths]
             [patterns.utils.svg :as svg]
             [patterns.utils.svg.polygon :as polygon]
+            [patterns.utils.svg.rotate :as rotate]
             [inkspot.color :as ink.color]
             [inkspot.color-chart :as ink.cc]
             [inkspot.color-chart.lindsay :as ink.lindsay]
@@ -914,6 +916,22 @@
             (indexed-days-of-week (week->date 2019 2))]
       (gen-fn idx_1_based year month day))))
 
+(defn cross-hatch-points
+  ([scale n]
+   (cross-hatch-points :left-to-right scale n))
+  ([direction scale n]
+   (->> (repeatedly n rand)
+        (map (fn [seed]
+               ; Quarter of a Circle
+               ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
+               (let [x-squared (Math/sqrt
+                                 (- 1 (* seed seed)))]
+                 (* scale
+                    (if (= :left-to-right direction)
+                      (inc (- x-squared))
+                      x-squared)))))
+        (map #(Math/round ^Float %)))))
+
 (defn instagram-2019-3
   []
   (let [background-colour "rgb(250,250,250)"
@@ -944,15 +962,6 @@
                           [:defs {}
                            (svg/->def src id)]
                           (svg/use id {:x padding :y padding})]))
-        cross-hatch-points (fn [n width]
-                             (->> (repeatedly n rand)
-                                  (map (fn [seed]
-                                         ; Quarter of a Circle
-                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
-                                         (* width
-                                            (inc (- (Math/sqrt
-                                                      (- 1 (* seed seed))))))))
-                                  (map #(Math/round %))))
         vert-hatch-gradient (fn [n stroke]
                               (let [points (cross-hatch-points n gradient-panel--width--padding)
                                     line-fn (fn [point]
@@ -1261,15 +1270,6 @@
                            3))
         radius (float (/ swatch-dim
                          10))
-        cross-hatch-points (fn [n width]
-                             (->> (repeatedly n rand)
-                                  (map (fn [seed]
-                                         ; Quarter of a Circle
-                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
-                                         (* width
-                                            (inc (- (Math/sqrt
-                                                      (- 1 (* seed seed))))))))
-                                  (map #(Math/round %))))
         vert-hatches (fn [n stroke]
                        (let [points (cross-hatch-points n (* 2 radius))
                              line-fn (fn [point]
@@ -1546,20 +1546,8 @@
                                        (Math/log 2))))
                    8)
         stroke-width 2
-        cross-hatch-points (fn [direction n]
-                             (->> (repeatedly n rand)
-                                  (map (fn [seed]
-                                         ; Quarter of a Circle
-                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
-                                         (let [x-squared (Math/sqrt
-                                                           (- 1 (* seed seed)))]
-                                           (* INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                              (if (= :left-to-right direction)
-                                                (inc (- x-squared))
-                                                x-squared)))))
-                                  (map #(Math/round %))))
         vert-hatches (fn [direction n stroke]
-                       (let [points (cross-hatch-points direction n)
+                       (let [points (cross-hatch-points direction INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT n)
                              line-fn (fn [point]
                                        [:line {:x1 point :y1 0
                                                :x2 point :y2 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
