@@ -1856,6 +1856,52 @@
     (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 9))]
       (gen-fn idx_1_based year month day))))
 
+(defn instagram-2019-10
+  []
+  (let [gen-fn (fn [idx_1_based year month day]
+                 (let [tiles (* idx_1_based month)
+                       swatch-dim (float (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                            tiles))
+                       widths (->> (* month day)
+                                   (cross-hatch-points swatch-dim)
+                                   sort)
+                       swatch (utils/veccat
+                                [:svg {:width swatch-dim
+                                       :height swatch-dim}
+                                 [:defs {}]
+                                 [:rect {:fill "azure"
+                                         :x 0 :y 0
+                                         :width swatch-dim
+                                         :height swatch-dim}]]
+                                (for [w widths]
+                                  [:rect {:fill "grey"
+                                          :fill-opacity "0.25"
+                                          :x 0 :y 0
+                                          :width w
+                                          :height w}]))
+                       swatch [:svg {:width swatch-dim
+                                     :height swatch-dim}
+                               [:defs {}
+                                (svg/->def (rotate/center swatch 45) "abc123")]
+                               [:rect {:fill "darkgray"
+                                       :x 0 :y 0
+                                       :width swatch-dim
+                                       :height swatch-dim}]
+                               (svg/use "abc123" {})]]
+                   (render [year month day]
+                           (align/center
+                             [[:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                               [:defs {}]]
+                              (tile/triangle
+                                [swatch]
+                                (+ (* 2 tiles)
+                                   3)
+                                tiles)])
+                           "TODO")))]
+    (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 10))]
+      (gen-fn idx_1_based year month day))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -1877,4 +1923,5 @@
   (trace/profile {} (instagram-2019-5))
   (trace/profile {} (instagram-2019-6))
   (trace/profile {} (instagram-2019-7))
-  (trace/profile {} (instagram-2019-9)))
+  (trace/profile {} (instagram-2019-9))
+  (trace/profile {} (instagram-2019-10)))
