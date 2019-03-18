@@ -1850,46 +1850,58 @@
 
 (defn instagram-2019-10
   []
-  (let [gen-fn (fn [idx_1_based year month day palette]
-                 (let [tiles (* idx_1_based month)
+  (let [widths+palette->svg (fn [tile-count swatch-dim widths
+                                 [background swatch-background & palette]]
+                              (let [swatch (utils/veccat
+                                             [:svg {:width swatch-dim
+                                                    :height swatch-dim}
+                                              [:defs {}]
+                                              [:rect {:fill (color/map-> swatch-background)
+                                                      :x 0 :y 0
+                                                      :width swatch-dim
+                                                      :height swatch-dim}]]
+                                             (map (fn [w {:keys [a] :as colour}]
+                                                    [:rect {:fill (color/map-> colour)
+                                                            :fill-opacity (or a 1)
+                                                            :x 0 :y 0
+                                                            :width w
+                                                            :height w}])
+                                                  widths
+                                                  (cycle palette)))
+                                    swatch [:svg {:width swatch-dim
+                                                  :height swatch-dim}
+                                            [:defs {}
+                                             (svg/->def (rotate/center swatch 45) "swatch")]
+                                            [:rect {:fill (color/map-> background)
+                                                    :x 0 :y 0
+                                                    :width swatch-dim
+                                                    :height swatch-dim}]
+                                            (svg/use "swatch" {})]]
+                                (align/center
+                                  [[:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                          :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                    [:defs {}]]
+                                   (tile/triangle
+                                     [swatch]
+                                     (+ (* 2 tile-count)
+                                        3)
+                                     tile-count)])))
+        gen-fn (fn [idx_1_based year month day palette]
+                 (let [tile-count (* idx_1_based month)
                        swatch-dim (float (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                            tiles))
+                                            tile-count))
                        widths (->> day
                                    (cross-hatch-points swatch-dim)
-                                   sort)
-                       swatch (utils/veccat
-                                [:svg {:width swatch-dim
-                                       :height swatch-dim}
-                                 [:defs {}]
-                                 [:rect {:fill "azure"
-                                         :x 0 :y 0
-                                         :width swatch-dim
-                                         :height swatch-dim}]]
-                                (for [w widths]
-                                  [:rect {:fill "grey"
-                                          :fill-opacity "0.25"
-                                          :x 0 :y 0
-                                          :width w
-                                          :height w}]))
-                       swatch [:svg {:width swatch-dim
-                                     :height swatch-dim}
-                               [:defs {}
-                                (svg/->def (rotate/center swatch 45) "swatch")]
-                               [:rect {:fill "darkgray"
-                                       :x 0 :y 0
-                                       :width swatch-dim
-                                       :height swatch-dim}]
-                               (svg/use "swatch" {})]]
-                   (render [year month day]
-                           (align/center
-                             [[:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                     :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
-                               [:defs {}]]
-                              (tile/triangle
-                                [swatch]
-                                (+ (* 2 tiles)
-                                   3)
-                                tiles)])
+                                   sort
+                                   reverse)
+                       palette->svg (partial widths+palette->svg tile-count swatch-dim widths)]
+                   (render [year month day 0]
+                           (palette->svg [{:r 100 :g 100 :b 110}
+                                          {:r 240 :g 240 :b 250}
+                                          {:r 175 :g 175 :b 200 :a 0.25}])
+                           (format ""))
+                   (render [year month day 1]
+                           (palette->svg palette)
                            (format ""))))
         colours (->> poke-palettes
                      (shuffle)
