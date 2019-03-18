@@ -7,9 +7,12 @@
             [patterns.pipes :as pipes]
             [patterns.tile :as tile]
             [patterns.transform :as transform]
+            [patterns.utils.layout.align :as align]
             [patterns.utils.paths :as utils.paths]
             [patterns.utils.svg :as svg]
+            [patterns.utils.svg.color :as color]
             [patterns.utils.svg.polygon :as polygon]
+            [patterns.utils.svg.rotate :as rotate]
             [inkspot.color :as ink.color]
             [inkspot.color-chart :as ink.cc]
             [inkspot.color-chart.lindsay :as ink.lindsay]
@@ -24,8 +27,7 @@
             [patterns.utils.svg.filter :as svg.filter]
             [patterns.emnist :as emnist])
   (:import [java.time LocalDate]
-           [java.awt Color]
-           [java.io File]))
+           [java.awt Color]))
 
 (def INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 1080)
 
@@ -914,6 +916,22 @@
             (indexed-days-of-week (week->date 2019 2))]
       (gen-fn idx_1_based year month day))))
 
+(defn cross-hatch-points
+  ([scale n]
+   (cross-hatch-points :left-to-right scale n))
+  ([direction scale n]
+   (->> (repeatedly n rand)
+        (map (fn [seed]
+               ; Quarter of a Circle
+               ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
+               (let [x-squared (Math/sqrt
+                                 (- 1 (* seed seed)))]
+                 (* scale
+                    (if (= :left-to-right direction)
+                      (inc (- x-squared))
+                      x-squared)))))
+        (map #(Math/round ^Float %)))))
+
 (defn instagram-2019-3
   []
   (let [background-colour "rgb(250,250,250)"
@@ -944,15 +962,6 @@
                           [:defs {}
                            (svg/->def src id)]
                           (svg/use id {:x padding :y padding})]))
-        cross-hatch-points (fn [n width]
-                             (->> (repeatedly n rand)
-                                  (map (fn [seed]
-                                         ; Quarter of a Circle
-                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
-                                         (* width
-                                            (inc (- (Math/sqrt
-                                                      (- 1 (* seed seed))))))))
-                                  (map #(Math/round %))))
         vert-hatch-gradient (fn [n stroke]
                               (let [points (cross-hatch-points n gradient-panel--width--padding)
                                     line-fn (fn [point]
@@ -1261,15 +1270,6 @@
                            3))
         radius (float (/ swatch-dim
                          10))
-        cross-hatch-points (fn [n width]
-                             (->> (repeatedly n rand)
-                                  (map (fn [seed]
-                                         ; Quarter of a Circle
-                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
-                                         (* width
-                                            (inc (- (Math/sqrt
-                                                      (- 1 (* seed seed))))))))
-                                  (map #(Math/round %))))
         vert-hatches (fn [n stroke]
                        (let [points (cross-hatch-points n (* 2 radius))
                              line-fn (fn [point]
@@ -1435,9 +1435,7 @@
                      (take 7)
                      (map (comp (partial take 4) rest))
                      (map (fn [xs]
-                            (map (fn [[_ {:keys [r g b]} _]]
-                                   (format "rgb(%s,%s,%s)"
-                                           r g b))
+                            (map (comp color/map-> second)
                                  xs))))]
     (doseq [[[idx_1_based year month day] colours]
             (map list
@@ -1481,10 +1479,8 @@
                                 [:rect {:x 0 :y 0
                                         :height wd
                                         :width wd
-                                        :style (format "fill:rgb(%s,%s,%s);"
-                                                       (:r background)
-                                                       (:g background)
-                                                       (:b background))}]
+                                        :style (format "%s;"
+                                                       (color/map-> background))}]
                                 (svg/use id {})]))))
         tiles-row (fn [filled-swatches empty-swatches fill-n row-n]
                     (assert (> row-n fill-n))
@@ -1546,20 +1542,8 @@
                                        (Math/log 2))))
                    8)
         stroke-width 2
-        cross-hatch-points (fn [direction n]
-                             (->> (repeatedly n rand)
-                                  (map (fn [seed]
-                                         ; Quarter of a Circle
-                                         ;; y(x) = width * (-sqrt(- x^2 + 1) + 1)
-                                         (let [x-squared (Math/sqrt
-                                                           (- 1 (* seed seed)))]
-                                           (* INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                              (if (= :left-to-right direction)
-                                                (inc (- x-squared))
-                                                x-squared)))))
-                                  (map #(Math/round %))))
         vert-hatches (fn [direction n stroke]
-                       (let [points (cross-hatch-points direction n)
+                       (let [points (cross-hatch-points direction INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT n)
                              line-fn (fn [point]
                                        [:line {:x1 point :y1 0
                                                :x2 point :y2 INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -1600,11 +1584,8 @@
                                 tile-xn-yn
                                 tile-xn-yn))))
         gen-fn (fn [idx_1_based year month day [primary-colour secondary-colour]]
-                 (let [to-rgb (fn [{:keys [r g b]}]
-                                (format "rgb(%s,%s,%s)"
-                                        r g b))
-                       dominant-colour (to-rgb primary-colour)
-                       background-colour (to-rgb secondary-colour)
+                 (let [dominant-colour (color/map-> primary-colour)
+                       background-colour (color/map-> secondary-colour)
                        clip-points (fn []
                                      (concat [0]
                                              (->> #(rand-int INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT)
@@ -1735,15 +1716,15 @@
         blank-tile [:svg tile-dims
                     [:defs {}]]
         filled-tile-gen (fn [colour-gen]
-                          (let [{:keys [r g b]} (colour-gen)]
+                          (let [colour (colour-gen)]
                             [:svg tile-dims
                              [:defs {}]
                              [:rect (assoc tile-dims
                                       :x 0 :y 0
-                                      :style (format "fill:rgb(%s,%s,%s);"
-                                                     r g b))]]))
+                                      :style (format "fill:%s;"
+                                                     (color/map-> colour)))]]))
         character-tile-gen (fn [colour-gen character]
-                             (let [{:keys [r g b]} (colour-gen)
+                             (let [colour (colour-gen)
                                    character-id (gensym "c")
                                    mask-id (gensym "m")
                                    filter-id (gensym "f")
@@ -1774,8 +1755,7 @@
                                                           filter-id))]]]
                                 [:rect (assoc tile-dims
                                          :x 0 :y 0
-                                         :fill (format "rgb(%s,%s,%s)"
-                                                       r g b)
+                                         :fill (color/map-> colour)
                                          :mask (format "url(#%s)"
                                                        mask-id))]]))
         number-tile-seq-gen (fn [palette places n]
@@ -1868,6 +1848,73 @@
     (doseq [[idx_1_based year month day] (indexed-days-of-week (week->date 2019 9))]
       (gen-fn idx_1_based year month day))))
 
+(defn instagram-2019-10
+  []
+  (let [widths+palette->svg (fn [tile-count swatch-dim widths
+                                 [background swatch-background & palette]]
+                              (let [swatch (utils/veccat
+                                             [:svg {:width swatch-dim
+                                                    :height swatch-dim}
+                                              [:defs {}]
+                                              [:rect {:fill (color/map-> swatch-background)
+                                                      :x 0 :y 0
+                                                      :width swatch-dim
+                                                      :height swatch-dim}]]
+                                             (map (fn [w {:keys [a] :as colour}]
+                                                    [:rect {:fill (color/map-> colour)
+                                                            :fill-opacity (or a 1)
+                                                            :x 0 :y 0
+                                                            :width w
+                                                            :height w}])
+                                                  widths
+                                                  (cycle palette)))
+                                    swatch [:svg {:width swatch-dim
+                                                  :height swatch-dim}
+                                            [:defs {}
+                                             (svg/->def (rotate/center swatch 45) "swatch")]
+                                            [:rect {:fill (color/map-> background)
+                                                    :x 0 :y 0
+                                                    :width swatch-dim
+                                                    :height swatch-dim}]
+                                            (svg/use "swatch" {})]]
+                                (align/center
+                                  [[:svg {:width INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                          :height INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                    [:defs {}]]
+                                   (tile/triangle
+                                     [swatch]
+                                     (+ (* 2 tile-count)
+                                        3)
+                                     tile-count)])))
+        gen-fn (fn [idx_1_based year month day palette]
+                 (let [tile-count (* idx_1_based month)
+                       swatch-dim (float (/ INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                            tile-count))
+                       widths (->> day
+                                   (cross-hatch-points swatch-dim)
+                                   sort
+                                   reverse)
+                       palette->svg (partial widths+palette->svg tile-count swatch-dim widths)]
+                   (render [year month day 0]
+                           (palette->svg [{:r 100 :g 100 :b 110}
+                                          {:r 240 :g 240 :b 250}
+                                          {:r 175 :g 175 :b 200 :a 0.25}])
+                           (format ""))
+                   (render [year month day 1]
+                           (palette->svg palette)
+                           (format ""))))
+        colours (->> poke-palettes
+                     (shuffle)
+                     (take 7)
+                     (map (fn [xs]
+                            (map second
+                                 xs))))]
+    (doseq [[[idx_1_based year month day] palette]
+            (map list
+                 (indexed-days-of-week (week->date 2019 10))
+                 colours)]
+      (gen-fn idx_1_based year month day palette))))
+
 (comment
   (= [[1 2018 1 1] [2 2018 1 2] [3 2018 1 3] [4 2018 1 4] [5 2018 1 5] [6 2018 1 6] [7 2018 1 7]]
      (indexed-days-of-week (week->date 2018 0)))
@@ -1889,4 +1936,5 @@
   (trace/profile {} (instagram-2019-5))
   (trace/profile {} (instagram-2019-6))
   (trace/profile {} (instagram-2019-7))
-  (trace/profile {} (instagram-2019-9)))
+  (trace/profile {} (instagram-2019-9))
+  (trace/profile {} (instagram-2019-10)))
