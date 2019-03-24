@@ -264,14 +264,29 @@
                                                   {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                                    :y (- center gap)}]
                                                  circle small-radius)]
-                               (->interior-lines
+                               (map
+                                 (fn [endpoint-y center-y [b0 b1] [b3 b2]]
+                                   (->interior-line [{:x 0
+                                                      :y endpoint-y}
+                                                     {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                      :y endpoint-y}]
+                                                    circle center-y [b0 b1 b2 b3]))
                                  endpoint-ys
                                  top-half-ys
-                                 top-half-beziers)
-                               (->interior-lines
-                                 (drop (count top-half-ys) endpoint-ys)
-                                 bottom-half-ys
-                                 bottom-half-beziers)
+                                 (partition 2 top-half-beziers)
+                                 (partition 2 (reverse top-half-beziers)))
+                               (reverse
+                                 (map
+                                   (fn [endpoint-y center-y [b0 b1] [b3 b2]]
+                                     (->interior-line [{:x 0
+                                                        :y endpoint-y}
+                                                       {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                        :y endpoint-y}]
+                                                      circle center-y [b0 b1 b2 b3]))
+                                   (reverse (take-last (count bottom-half-ys) endpoint-ys))
+                                   (reverse bottom-half-ys)
+                                   (partition 2 bottom-half-beziers)
+                                   (partition 2 (reverse bottom-half-beziers))))
                                [(->exterior-line [{:x 0
                                                    :y (+ center gap)}
                                                   {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
