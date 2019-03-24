@@ -246,7 +246,7 @@
                                           (map ->int)))
                        top-half-beziers (->bezier-xs top-half-ys)
                        bottom-half-beziers (->bezier-xs bottom-half-ys)
-                       ->interior-lines (fn [endpoint-ys center-points beziers]
+                       ->interior-lines (fn [endpoint-ys center-ys beziers]
                                           (map
                                             (fn [endpoint-y center-y [b0 b1] [b3 b2]]
                                               (->interior-line [{:x 0
@@ -255,7 +255,7 @@
                                                                  :y endpoint-y}]
                                                                circle center-y [b0 b1 b2 b3]))
                                             endpoint-ys
-                                            center-points
+                                            center-ys
                                             (partition 2 beziers)
                                             (partition 2 (reverse beziers))))
                        paths (utils/veccat
@@ -264,29 +264,15 @@
                                                   {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                                    :y (- center gap)}]
                                                  circle small-radius)]
-                               (map
-                                 (fn [endpoint-y center-y [b0 b1] [b3 b2]]
-                                   (->interior-line [{:x 0
-                                                      :y endpoint-y}
-                                                     {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                                      :y endpoint-y}]
-                                                    circle center-y [b0 b1 b2 b3]))
+                               (->interior-lines
                                  endpoint-ys
                                  top-half-ys
-                                 (partition 2 top-half-beziers)
-                                 (partition 2 (reverse top-half-beziers)))
+                                 top-half-beziers)
                                (reverse
-                                 (map
-                                   (fn [endpoint-y center-y [b0 b1] [b3 b2]]
-                                     (->interior-line [{:x 0
-                                                        :y endpoint-y}
-                                                       {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                                        :y endpoint-y}]
-                                                      circle center-y [b0 b1 b2 b3]))
+                                 (->interior-lines
                                    (reverse (take-last (count bottom-half-ys) endpoint-ys))
                                    (reverse bottom-half-ys)
-                                   (partition 2 bottom-half-beziers)
-                                   (partition 2 (reverse bottom-half-beziers))))
+                                   bottom-half-beziers))
                                [(->exterior-line [{:x 0
                                                    :y (+ center gap)}
                                                   {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
