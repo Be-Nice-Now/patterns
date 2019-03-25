@@ -317,7 +317,13 @@
                                              [:path {:fill "midnightblue"
                                                      :d d}]))))
                                shatter-padding)
-                             (format ""))))]
+                             (e/format-w-newlines
+                               [["Circle with %s lines through the middle"
+                                 "representing the day of the week"
+                                 "(ie, 1 for Monday, 2 for Tuesday, etc.)."]
+                                ["The code for this is allowed to randomly determine"
+                                 "the curves passing through the center of the circle."]]
+                               idx_1_based))))]
     (doseq [[idx_1_based year month day] (e/indexed-days-of-week (e/week->date 2019 11))]
       (gen-fn idx_1_based year month day))))
 
