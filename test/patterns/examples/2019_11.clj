@@ -237,27 +237,46 @@
                                                   i)))
                                         (map ->int)
                                         (map (partial + (- center gap))))
-                       ->bezier-xs (fn [ys]
-                                     (->> (count ys)
-                                          (* 4)
-                                          n-rands
-                                          (map (partial * circle-radius 2))
-                                          (map (partial + gap))
-                                          (map ->int)))
-                       top-half-beziers (->bezier-xs top-half-ys)
-                       bottom-half-beziers (->bezier-xs bottom-half-ys)
-                       ->interior-lines (fn [endpoint-ys center-ys beziers]
+                       ->bezier-x-seeds (fn [ys]
+                                          (->> (count ys)
+                                               (* 4)
+                                               n-rands))
+                       ->bezier-x (fn [y seed]
+                                    (let [[beginning end] (sort
+                                                            (circle-intersects
+                                                              circle
+                                                              y))]
+                                      (->int (+ beginning
+                                                (* (- end beginning)
+                                                   seed)))))
+                       top-half-bezier-seeds (->bezier-x-seeds top-half-ys)
+                       bottom-half-bezier-seeds (->bezier-x-seeds bottom-half-ys)
+                       ->bezier-xs (fn [endpoint-y center-y [b0 b1 b2 b3]]
+                                     (let [[y0 y1] (sort [endpoint-y center-y])
+                                           middle-y (+ y0
+                                                       (/ (- y1 y0)
+                                                          2))]
+                                       [(->bezier-x middle-y b0)
+                                        (->bezier-x middle-y b1)
+                                        (->bezier-x middle-y b2)
+                                        (->bezier-x middle-y b3)]))
+                       ->interior-line (fn [endpoint-y center-y [b0 b1] [b3 b2]]
+                                         (->interior-line
+                                           [{:x 0
+                                             :y endpoint-y}
+                                            {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                             :y endpoint-y}]
+                                           circle center-y
+                                           (->bezier-xs endpoint-y
+                                                        center-y
+                                                        [b0 b1 b2 b3])))
+                       ->interior-lines (fn [endpoint-ys center-ys bezier-seeds]
                                           (map
-                                            (fn [endpoint-y center-y [b0 b1] [b3 b2]]
-                                              (->interior-line [{:x 0
-                                                                 :y endpoint-y}
-                                                                {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                                                 :y endpoint-y}]
-                                                               circle center-y [b0 b1 b2 b3]))
+                                            ->interior-line
                                             endpoint-ys
                                             center-ys
-                                            (partition 2 beziers)
-                                            (partition 2 (reverse beziers))))
+                                            (partition 2 bezier-seeds)
+                                            (partition 2 (reverse bezier-seeds))))
                        paths (utils/veccat
                                [(->exterior-line [{:x 0
                                                    :y (- center gap)}
@@ -267,12 +286,12 @@
                                (->interior-lines
                                  endpoint-ys
                                  top-half-ys
-                                 top-half-beziers)
+                                 top-half-bezier-seeds)
                                (reverse
                                  (->interior-lines
                                    (reverse (take-last (count bottom-half-ys) endpoint-ys))
                                    (reverse bottom-half-ys)
-                                   bottom-half-beziers))
+                                   bottom-half-bezier-seeds))
                                [(->exterior-line [{:x 0
                                                    :y (+ center gap)}
                                                   {:x e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
