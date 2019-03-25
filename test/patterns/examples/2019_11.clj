@@ -302,22 +302,22 @@
                                            (partition 2 paths))]
 
                    (e/render [year month day]
-                           (shatter/dark
-                             (utils/veccat
-                               [:svg {:width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                      :height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
-                                [:defs {}]
-                                [:rect {:fill "whitesmoke"
-                                        :x 0 :y 0
-                                        :width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                                        :height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
-                               (->> compound-paths
-                                    (map path->d)
-                                    (map (fn [d]
-                                           [:path {:fill "midnightblue"
-                                                   :d d}]))))
-                             shatter-padding)
-                           (format ""))))]
+                             (shatter/dark
+                               (utils/veccat
+                                 [:svg {:width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                        :height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                  [:defs {}]
+                                  [:rect {:fill "whitesmoke"
+                                          :x 0 :y 0
+                                          :width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                          :height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]]
+                                 (->> compound-paths
+                                      (map path->d)
+                                      (map (fn [d]
+                                             [:path {:fill "midnightblue"
+                                                     :d d}]))))
+                               shatter-padding)
+                             (format ""))))]
     (doseq [[idx_1_based year month day] (e/indexed-days-of-week (e/week->date 2019 11))]
       (gen-fn idx_1_based year month day))))
 
