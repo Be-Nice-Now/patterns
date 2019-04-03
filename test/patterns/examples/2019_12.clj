@@ -7,6 +7,13 @@
             [patterns.utils.svg :as svg]
             [patterns.utils.layout.align :as align]))
 
+(defn- ->int
+  [n]
+  (-> n
+      float
+      Math/round
+      int))
+
 ;; Whitesmoke is 245 245 245
 (def ideal-gray 245)
 
@@ -19,9 +26,9 @@
                     max-rgb)
                (- ideal-gray
                   (max r g b))
-               (int (/ (- 255
-                          max-rgb)
-                       2)))]
+               (->int (* (- 255
+                            max-rgb)
+                         (/ 3 4))))]
     {:a a
      :r (+ r diff)
      :g (+ g diff)
@@ -40,10 +47,7 @@
     (->> (range 100 stroke-width (- (/ (- 100
                                           stroke-width)
                                        n)))
-         (map #(-> %
-                   float
-                   Math/round
-                   int))
+         (map ->int)
          (map (fn [dim]
                 [:svg {:width (* 2 (+ dim stroke-width))
                        :height (* 2 (+ dim stroke-width))}
@@ -60,22 +64,22 @@
 (defn- triangle-transform
   [{src-width :width
     src-height :height} {:keys [width height]} id]
-  (let [scale (float (inc (rand)))
-        x (int (+ (rand-int (- width
-                               (* 2 src-width scale)))
-                  (* src-width scale)))
-        y (int (+ (rand-int (- height
-                               (* 2 src-height scale)))
-                  (* src-height scale)))]
+  (let [scale (inc (rand))
+        x (->int (+ (rand-int (- width
+                                 (* 2 src-width scale)))
+                    (* src-width scale)))
+        y (->int (+ (rand-int (- height
+                                 (* 2 src-height scale)))
+                    (* src-height scale)))]
     (svg/use id {:x x
                  :y y
                  :transform (format "rotate(%s %s %s) scale(%s)"
                                     (rand-int 360)
-                                    (int (+ x (/ src-width
-                                                 2)))
-                                    (int (+ y (/ src-height
-                                                 2)))
-                                    scale)})))
+                                    (->int (+ x (/ src-width
+                                                   2)))
+                                    (->int (+ y (/ src-height
+                                                   2)))
+                                    (->int scale))})))
 
 (defn gen
   []
@@ -98,7 +102,15 @@
                                               {:width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                                                :height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
                                               triangle-id)))
-                             ""
+                             (e/format-w-newlines
+                               [["Simple pattern this week of random triangles."]
+                                ["More triangles will show up during the week as"
+                                 "there are month * day (%s * %s = %s)"
+                                 "triangles in each image."]
+                                ["Each set of triangles has %s nested triangles for the day."]
+                                ["Colours lifted from popular comics."]]
+                               month day (* month day)
+                               day)
                              {:recursive? false})))
         colours (->> e/poke-palettes
                      (shuffle)
