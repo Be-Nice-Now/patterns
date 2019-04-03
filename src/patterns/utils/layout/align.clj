@@ -2,28 +2,34 @@
   (:require [patterns.utils :as utils]
             [patterns.utils.svg :as svg]))
 
+(defn- ->int
+  [n]
+  (-> n
+      float
+      Math/round
+      int))
+
 (defn center
-  [[src & srcs]]
-  (let [{w :width
-         h :height
-         :as dims} (svg/dimensions src)
+  [srcs]
+  (let [w (->int (apply max (map (comp :width svg/dimensions)
+                                 srcs)))
+        h (->int (apply max (map (comp :height svg/dimensions)
+                                 srcs)))
         gen-id (partial gensym "center")
-        id (gen-id)
         ids (repeatedly (count srcs) gen-id)]
     (utils/veccat
-      [:svg dims
+      [:svg {:width w
+             :height h}
        (utils/veccat
-         [:defs {}
-          (svg/->def src id)]
+         [:defs {}]
          (map svg/->def
               srcs
-              ids))
-       (svg/use id {})]
+              ids))]
       (map (fn [src id]
              (let [{:keys [width height]} (svg/dimensions src)
-                   gap-width (float (/ (- w width)
+                   gap-width (->int (/ (- w width)
                                        2))
-                   gap-height (float (/ (- h height)
+                   gap-height (->int (/ (- h height)
                                         2))]
                (svg/use id
                         {:x gap-width
