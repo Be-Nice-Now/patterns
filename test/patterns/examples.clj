@@ -71,7 +71,9 @@
          args))
 
 (defn render
-  [year-month-day-xs src description]
+  [year-month-day-xs src description & [{:keys [extension]
+                                         :or {extension :png}
+                                         :as render-kws}]]
   (let [filename (str "./doc/"
                       (str/join "-" year-month-day-xs))]
     (try
@@ -79,7 +81,8 @@
       (patterns/render
         filename
         src
-        :png)
+        extension
+        render-kws)
       (spit (str filename ".txt")
             (format-w-newlines
               [[description]

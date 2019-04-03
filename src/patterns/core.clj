@@ -158,16 +158,22 @@
   "Given a `src` Hiccup SVG, return a string HTML representation.
    If provided a filename, place the rendered SVG representation there.
    If provided an extension [:svg :png] render the Hiccup SVG as the given extension.
+   If provided an optional named argument :recursive? (defaults to `true`)
+   either render the `src` with or without recursion on the `:defs`.
 
    Returns the filename with extension."
   ([src]
    (src->string src))
   ([filename src]
    (render filename src :svg))
-  ([filename src extension]
+  ([filename src extension & [{:keys [recursive?]
+                               :or {recursive? true}}]]
    (let [filename-w-extension (str filename "." (name extension))]
      (case extension
        :svg (spit filename-w-extension (render src))
-       :png (recursive-render-png filename-w-extension
-                                  src))
+       :png ((if recursive?
+               recursive-render-png
+               render-document-to-png)
+              filename-w-extension
+              src))
      filename-w-extension)))
