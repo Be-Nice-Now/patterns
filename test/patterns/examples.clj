@@ -70,12 +70,22 @@
                         fmt-lines))
          args))
 
+(defn xs->filename
+  [integers]
+  (let [])
+  (->> integers
+       (map (fn [integer]
+              (if (> 10 integer)
+                (format "%02d" integer)
+                integer)))
+       (str/join "-")))
+
 (defn render
   [year-month-day-xs src description & [{:keys [extension]
                                          :or {extension :png}
                                          :as render-kws}]]
   (let [filename (str "./doc/"
-                      (str/join "-" year-month-day-xs))]
+                      (xs->filename year-month-day-xs))]
     (try
       (log/info description)
       (patterns/render
