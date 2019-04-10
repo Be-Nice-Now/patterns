@@ -10,11 +10,14 @@
       int))
 
 (defn center
-  [srcs]
-  (let [w (->int (apply max (map (comp :width svg/dimensions)
-                                 srcs)))
-        h (->int (apply max (map (comp :height svg/dimensions)
-                                 srcs)))
+  [srcs & [{:keys [clip?]
+            :or {clip? false}}]]
+  (let [{w :width
+         h :height} (or clip?
+                        {:width (->int (apply max (map (comp :width svg/dimensions)
+                                                       srcs)))
+                         :height (->int (apply max (map (comp :height svg/dimensions)
+                                                        srcs)))})
         gen-id (partial gensym "center")
         ids (repeatedly (count srcs) gen-id)]
     (utils/veccat
