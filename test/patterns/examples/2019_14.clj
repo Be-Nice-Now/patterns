@@ -7,6 +7,26 @@
             [patterns.utils :as utils]
             [patterns.examples.2019-13 :refer [->int vector-field]]))
 
+(defn- tmp-transform-fn
+  [tiles-xy idx_1_based day _src [x y] el]
+  (let [[tag {el-x :x
+              el-y :y
+              :keys [xlink:href width height]} & content] el]
+    [:g {:transform (format "translate(%s,%s)"
+                            el-x el-y)}
+     (utils/veccat
+       [tag
+        {:width width
+         :heigh height
+         :xlink:href xlink:href
+         :transform (format "scale(%s)"
+                            (float (/ (vector-field tiles-xy
+                                                    idx_1_based
+                                                    day
+                                                    x y)
+                                      360)))}]
+       content)]))
+
 (defn gen
   []
   (let [tiles-xy 50
