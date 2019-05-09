@@ -116,7 +116,8 @@
   (make-parents!)
   (let [fs-cached-image (->image-file character n)]
     (when-not (.exists ^File fs-cached-image)
-      (with-open [reader (io/reader (io/resource "emnist/emnist-balanced-test.csv"))]
+      (with-open [f (zip/resource->file "emnist.zip")
+                  reader (zip/reader f "emnist-balanced-test.csv")]
         (loop [[[label & columns] & rows] (csv/read-csv reader)
                n-seen-so-far 0]
           (if (= (->character label)
