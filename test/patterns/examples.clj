@@ -1733,7 +1733,7 @@
                    :height wh}
         character-dims {:width (/ wh 2)
                         :height (/ wh 2)}
-        character-tile-gen (partial tile-dims character-dims)
+        character-tile-gen (partial character-tile-gen tile-dims character-dims)
         blank-tile [:svg tile-dims
                     [:defs {}]]
         filled-tile-gen (fn [colour-gen]
