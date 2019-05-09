@@ -92,13 +92,13 @@
                            {:recursive? false}))
         [background & palette] (->> e/poke-palettes
                                     (filter (fn [palette]
-                                              (>= 8 (count palette))))
+                                              (<= 8 (count palette))))
                                     (shuffle)
                                     first
                                     (map second))
         srcs (for [[[idx_1_based year month day] colour]
                    (map list
-                        (e/indexed-days-of-week (e/week->date 2019 13))
+                        (e/indexed-days-of-week (e/week->date 2019 14))
                         palette)]
                (gen-src idx_1_based year month day colour))]
     (doseq [[idx_1_based year month day] (e/indexed-days-of-week (e/week->date 2019 14))]

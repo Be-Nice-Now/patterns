@@ -1680,6 +1680,43 @@
                              (float (/ height h)))}
       (svg/use id {})]]))
 
+(defn character-tile-gen
+  [tile-dims character-dims colour-gen character]
+  (let [colour (colour-gen)
+        character-id (gensym "c")
+        mask-id (gensym "m")
+        filter-id (gensym "f")
+        picked-img (emnist/case-insensitive-random character)]
+    [:svg tile-dims
+     [:defs {}
+      (svg/->def (center tile-dims
+                         (scale character-dims
+                                (path->svg
+                                  picked-img)))
+                 character-id)
+      [:filter {:id filter-id
+                :x 0 :y 0
+                :width "100%" :height "100%"}
+       [:feImage {:result (str "i" filter-id)
+                  :xlink:href (str "#" character-id)}]
+       (svg.filter/matrix (gensym "f")
+                          (str "i" filter-id)
+                          [[0 0 0 0 255]
+                           [0 0 0 0 255]
+                           [0 0 0 0 255]
+                           [0 0 0 1 0]])]
+      [:mask {:id mask-id}
+       [:rect (assoc tile-dims
+                :fill "black")]
+       [:rect (assoc tile-dims
+                :style (format "filter:url(#%s);"
+                               filter-id))]]]
+     [:rect (assoc tile-dims
+              :x 0 :y 0
+              :fill (color/map-> colour)
+              :mask (format "url(#%s)"
+                            mask-id))]]))
+
 (defn instagram-2019-9
   []
   (let [k 10
@@ -1696,6 +1733,7 @@
                    :height wh}
         character-dims {:width (/ wh 2)
                         :height (/ wh 2)}
+        character-tile-gen (partial tile-dims character-dims)
         blank-tile [:svg tile-dims
                     [:defs {}]]
         filled-tile-gen (fn [colour-gen]
@@ -1706,41 +1744,6 @@
                                       :x 0 :y 0
                                       :style (format "fill:%s;"
                                                      (color/map-> colour)))]]))
-        character-tile-gen (fn [colour-gen character]
-                             (let [colour (colour-gen)
-                                   character-id (gensym "c")
-                                   mask-id (gensym "m")
-                                   filter-id (gensym "f")
-                                   picked-img (emnist/case-insensitive-random character)]
-                               [:svg tile-dims
-                                [:defs {}
-                                 (svg/->def (center tile-dims
-                                                    (scale character-dims
-                                                           (path->svg
-                                                             picked-img)))
-                                            character-id)
-                                 [:filter {:id filter-id
-                                           :x 0 :y 0
-                                           :width "100%" :height "100%"}
-                                  [:feImage {:result (str "i" filter-id)
-                                             :xlink:href (str "#" character-id)}]
-                                  (svg.filter/matrix (gensym "f")
-                                                     (str "i" filter-id)
-                                                     [[0 0 0 0 255]
-                                                      [0 0 0 0 255]
-                                                      [0 0 0 0 255]
-                                                      [0 0 0 1 0]])]
-                                 [:mask {:id mask-id}
-                                  [:rect (assoc tile-dims
-                                           :fill "black")]
-                                  [:rect (assoc tile-dims
-                                           :style (format "filter:url(#%s);"
-                                                          filter-id))]]]
-                                [:rect (assoc tile-dims
-                                         :x 0 :y 0
-                                         :fill (color/map-> colour)
-                                         :mask (format "url(#%s)"
-                                                       mask-id))]]))
         number-tile-seq-gen (fn [palette places n]
                               (let [characters (map str (str n))
                                     places-to-pad (max 0
