@@ -1,4 +1,4 @@
-(ns patterns.fabrics
+(ns patterns.examples.2019-18
   (:require [clojure.java.io :as io]
             [mikera.image.core :as img]
             [patterns.transform :as transform]
@@ -6,13 +6,16 @@
             [patterns.core :as patterns]
             [patterns.pipes :as pipes]
             [patterns.utils.paths :as utils.paths]
+            [patterns.examples.2019-13 :refer [->int vector-field]]
+            [taoensso.tufte :as trace]
             [patterns.utils.svg.polygon :as polygon]
             [patterns.utils.svg :as svg]
             [clojure.string :as str]
-            [patterns.shatter :as shatter]))
+            [patterns.shatter :as shatter]
+            [patterns.examples :as e]))
 
-(defn cmyk-rgb
-  [tile-width]
+(defn gen
+  []
   (let [swatch-dimension (bit-shift-left 1 8)
         colour-blocks (concat [[:rect {:fill "rgb(0,0,0)"
                                        :x 0 :y 0
@@ -48,7 +51,7 @@
                                     colour-blocks)
         colour-blocks-tiled (tile/grid
                               colour-blocks-swatches
-                              tile-width 1)
+                              e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 1)
         swatch-dimension--w-padding (int (* swatch-dimension
                                             (/ 60 64)))
         shapes (concat [[:circle {:cx 0 :cy 0 :r (/ swatch-dimension--w-padding
@@ -57,16 +60,16 @@
                                 :x2 (/ swatch-dimension--w-padding 8) :y2 0
                                 :stroke-width (/ swatch-dimension--w-padding 8)
                                 :stroke-linecap "round"}]]
-                       (for [points (range 3 (inc tile-width))]
+                       (for [points (range 3 (inc e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT))]
                          ;; y = mx + b
                          ;; (x0, y0) = (3, (/ swatch-dimension--w-padding 4))
                          ;; (xn, yn) = (tile-width, swatch-dimension--w-padding)
                          (let [min-radius (/ swatch-dimension--w-padding 8)
                                max-radius (/ swatch-dimension--w-padding 2)
                                rise (- max-radius min-radius)
-                               run (- tile-width 3)
+                               run (- e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 3)
                                m (/ rise run)
-                               b (- max-radius (* tile-width m))
+                               b (- max-radius (* e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT m))
                                radius (+ (* m points)
                                          b)]
                            (polygon/equilateral
@@ -85,57 +88,63 @@
                              shapes)
         shapes-tiled (tile/grid
                        shapes-swatches
-                       tile-width 1)
-        {:keys [style path-fn]} (svg/multi-stroke [{:width (int (* swatch-dimension
-                                                                   (/ 4 8)))
-                                                    :colour {:r 255 :g 255 :b 255}}])
-        pipes-swatches (pipes/swatches
-                         1 1
-                         {:line-fn (fn [& args]
-                                     (path-fn (apply svg/quadratic args)))
-                          :style style
-                          :grid-size (/ swatch-dimension 2)})
+                       e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT 1)
         tile-height (count colour-blocks)
-        pipes-tiled (tile/grid
-                      pipes-swatches
-                      tile-width tile-height
-                      {:transform-fn tile/transform-rotate})
         colour-blocks-id (gensym "id")
         shapes-id (gensym "id")
-        pipes-id (gensym "id")]
-    [:svg
-     {:height (* (+ tile-height 2) swatch-dimension)
-      :width (* tile-width swatch-dimension)}
-     [:defs {}
-      (svg/->def (shatter/dark shapes-tiled (int (/ swatch-dimension
-                                                    32)))
-                 shapes-id)
-      (svg/->def (shatter/dark
-                   [:svg {:height (* tile-height swatch-dimension)
-                          :width (* tile-width swatch-dimension)}
-                    [:defs {}]
-                    [:rect {:fill "rgb(0,0,0)"
-                            :x 0 :y 0
-                            :height (* tile-height swatch-dimension)
-                            :width (* tile-width swatch-dimension)}]
-                    pipes-tiled]
-                   (int (/ swatch-dimension
-                           64)))
-                 pipes-id)
-      (svg/->def colour-blocks-tiled colour-blocks-id)]
-     [:rect {:fill "rgb(255,255,255)"
-             :x 0 :y 0
-             :height (* (+ tile-height 2) swatch-dimension)
-             :width (* tile-width swatch-dimension)}]
-     (svg/use shapes-id
-              {})
-     (svg/use pipes-id
-              {:y swatch-dimension})
-     (svg/use colour-blocks-id
-              {:y (* (inc tile-height) swatch-dimension)})]))
+        pipes-id (gensym "id")
+        gen-fn (fn [idx_1_based year month day]
+                 (let [pipe-swatch-dimension (->int (/ e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                       day))
+                       {:keys [style path-fn]} (svg/multi-stroke [{:width (int (* pipe-swatch-dimension
+                                                                                  (/ 4 8)))
+                                                                   :colour {:r 255 :g 255 :b 255}}])
+                       pipes-tiled (tile/grid
+                                     (pipes/swatches
+                                       1 1
+                                       {:line-fn (fn [& args]
+                                                   (path-fn (apply svg/quadratic args)))
+                                        :style style
+                                        :grid-size pipe-swatch-dimension})
+                                     day day
+                                     {:transform-fn tile/transform-rotate})]
+                   (e/render [year month day]
+                             [:svg
+                              {:height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                               :width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                              [:defs {}
+                               (svg/->def (shatter/dark shapes-tiled (int (/ swatch-dimension
+                                                                             32)))
+                                          shapes-id)
+                               (svg/->def (shatter/dark
+                                            [:svg {:height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                   :width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}
+                                             [:defs {}]
+                                             [:rect {:fill "rgb(0,0,0)"
+                                                     :x 0 :y 0
+                                                     :height e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
+                                                     :width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT}]
+                                             pipes-tiled]
+                                            (int (/ pipe-swatch-dimension
+                                                    64)))
+                                          pipes-id)
+                               (svg/->def colour-blocks-tiled colour-blocks-id)]
+                              [:rect {:fill "rgb(255,255,255)"
+                                      :x 0 :y 0
+                                      :height (* (+ tile-height 2) swatch-dimension)
+                                      :width (* e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT swatch-dimension)}]
+                              (svg/use shapes-id
+                                       {})
+                              (svg/use pipes-id
+                                       {:y swatch-dimension})
+                              (svg/use colour-blocks-id
+                                       {:y (* (inc tile-height) swatch-dimension)})]
+                             (e/format-w-newlines
+                               [["People love the pipes. Give em' the pipes."]]
+                               idx_1_based)
+                             {:recursive? false})))]
+    (doseq [[idx_1_based year month day] (e/indexed-days-of-week (e/week->date 2019 18))]
+      (gen-fn idx_1_based year month day))))
 
 (comment
-  (patterns/render
-    "./cmyk-long-64-rgb"
-    (cmyk-rgb 64)
-    :png))
+  (trace/profile {} (gen)))
