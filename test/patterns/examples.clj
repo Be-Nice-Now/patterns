@@ -1131,7 +1131,7 @@
                               (tile-grid-gen
                                 (fn [percentage]
                                   (triangle-tiles ((triangle--percentage->idx-fn percentage)
-                                                    (rand)))))))
+                                                   (rand)))))))
         star-tile-gen (fn [colour]
                         (let [star-tile-empty [:svg {:width tile-wh
                                                      :height tile-wh}
@@ -1157,7 +1157,7 @@
                                                          (format "%s %s"
                                                                  (name h-or-v)
                                                                  ((or direction identity)
-                                                                   tile-padding)))
+                                                                  tile-padding)))
                                                      svg [:svg {:width tile-wh
                                                                 :height tile-wh}
                                                           [:defs {}]
