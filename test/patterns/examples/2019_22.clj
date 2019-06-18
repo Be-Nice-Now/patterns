@@ -27,29 +27,6 @@
       Math/floor
       int))
 
-(defn filled-tile-gen
-  [tile-dim colour-gen]
-  (let [colour (colour-gen)]
-    [:svg {:height tile-dim :width tile-dim}
-     [:defs {}]
-     [:rect {:height tile-dim
-             :width tile-dim
-             :x 0 :y 0
-             :style (format "fill:%s;"
-                            (color/map-> colour))}]]))
-
-(defn filled-tiles
-  [xy colour-gen]
-  (tile/grid
-    (repeatedly
-      (* xy xy)
-      (partial filled-tile-gen
-               (->int (/ e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
-                         2
-                         xy))
-               colour-gen))
-    xy xy))
-
 (defn gen-base
   [wh stroke-color]
   (let [cross-xy (->int (/ wh 2))
@@ -70,10 +47,10 @@
 
 (defn cross-hatch-gradient
   [wh n stroke-color]
-  (let [points (e/cross-hatch-points n wh)
+  (let [points (e/cross-hatch-points wh n)
         line-fn (fn [point]
                   [:line {:x1 0 :y1 point
-                          :x2 wh :y2 wh
+                          :x2 wh :y2 point
                           :stroke-width stroke-width
                           :stroke stroke-color}])]
     (utils/veccat
@@ -93,6 +70,7 @@
                          wh2 0
                          wh wh2
                          wh2 wh)
+              :fill "none"
               :stroke-linejoin "miter"}]
     [:svg {:width wh :height wh}
      [:defs {}
@@ -158,33 +136,26 @@
   [n wh center-color stroke-color cross-hatch-density]
   (let [src (gen-to-slice wh center-color stroke-color cross-hatch-density)
         base (gen-base wh stroke-color)]
-    (->> (repeatedly (* 2 n)
-                     (partial tile-gen src base))
-         set
-         (take n))))
+    (conj (->> (repeatedly (* 2 n)
+                           (partial tile-gen src base))
+               set
+               (take (dec n)))
+          (align/center
+            [base
+             src]))))
 
 (defn gen
   []
-  (let [k 10
-        svg-swatches nil
-        palette-to-colour-gen nil
-        tiles-xy 20
+  (let [tiles-xy 20
         tile-wh (/ e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
                    tiles-xy)
         gen-fn (fn [idx_1_based year month day [background-color center-color stroke-color]]
-                 (let [t (tiles day tile-wh
+                 (let [tiles-to-gen (+ idx_1_based month)
+                       t (tiles tiles-to-gen
+                                tile-wh
                                 (color/map-> center-color)
                                 (color/map-> stroke-color)
-                                25)
-                       ;svg-swatch (nth svg-swatches (dec idx_1_based))
-                       ;raster-svg-swatch (e/path->svg (transform/rasterize svg-swatch k))
-                       ;
-                       ;palette (->> raster-svg-swatch
-                       ;             graphs/histogram-data
-                       ;             (sort-by second)
-                       ;             (take-last k))
-                       ;colour-gen (palette-to-colour-gen palette)
-                       ]
+                                day)]
                    (e/render [year month day]
                              (align/center
                                [[:svg {:width e/INSTAGRAM-RECOMMENDED-MIN-WIDTH-HEIGHT
@@ -197,10 +168,21 @@
                                 (tile/grid
                                   t
                                   tiles-xy tiles-xy
-                                  {:transform-fn tile/transform-rotate
+                                  {
+                                   ;:transform-fn tile/transform-rotate
                                    :pick-fn tile/pick-random})])
                              (e/format-w-newlines
-                               []))))
+                               [["Images this week are generated from %s"
+                                 "source tiles. ie, the index of the day of the week (%s)"
+                                 "offset by the month (%s). The fill of these tiles"
+                                 "increases with %s cross hatches, representing the day"
+                                 "of the month."]
+                                ["Inspiration for this came from one of our"
+                                 "collaborators' studies with"
+                                 "@helen_louise_allen_textiles"
+                                 "at the @uwsohe."]
+                                ["Colours are sourced from popular comics."]]
+                               tiles-to-gen idx_1_based month day))))
         palettes (->> e/poke-palettes
                       (filter (fn [palette]
                                 (<= 3 (count palette))))
